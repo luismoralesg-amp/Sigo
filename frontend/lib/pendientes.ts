@@ -1,7 +1,7 @@
 "use client";
 /**
  * Cola de fotos sin señal (regla 10 del contrato, P-04).
- * Guarda en el celular (IndexedDB) las fotos, el dpi y el client_id, y reintenta POST /fichas/foto
+ * Guarda en el celular (IndexedDB) las fotos, el paciente_id y el client_id, y reintenta POST /pacientes/{id}/fichas
  * cuando vuelve la señal. Un client_id repetido devuelve la ficha que ya existe, así que reintentar es seguro.
  * Si IndexedDB no está disponible, la cola vive en memoria mientras la página siga abierta.
  */
@@ -11,14 +11,14 @@ import { aErrorApi } from "@/lib/api/errores";
 
 export interface Pendiente {
   client_id: string;
-  dpi: string;
+  paciente_id: string;
   capturada_en: string;
   imagenes: Blob[];
 }
 
 type Estado = { pendientes: Array<Omit<Pendiente, "imagenes"> & { paginas: number }>; enLinea: boolean; subiendo: number; subidas: number };
 
-const BASE = "sigo";
+const BASE = "sigo-v3";
 const ALMACEN = "fotos-pendientes";
 let estado: Estado = { pendientes: [], enLinea: true, subiendo: 0, subidas: 0 };
 const oyentes = new Set<() => void>();
@@ -79,7 +79,7 @@ async function subirTodo() {
   let ok = 0;
   for (const p of lista) {
     try {
-      await api.subirFoto(p);
+      await api.subirFicha(p.paciente_id, p);
       await quitar(p.client_id);
       ok += 1;
     } catch (e) {

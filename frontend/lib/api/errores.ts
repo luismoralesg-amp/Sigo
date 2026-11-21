@@ -1,5 +1,5 @@
 /**
- * Errores del contrato v2 (docs/contrato-v2.md, "Errores y reglas").
+ * Errores del contrato v3 (docs/contrato-v3.md, "Errores y reglas").
  * Forma única: { "error": { "codigo": "...", "mensaje": "..." } }.
  * El frontend muestra `mensaje` tal cual; los textos de aquí solo se usan si el backend no manda uno.
  */
@@ -9,6 +9,7 @@ export type CodigoError =
   | "identificador_invalido"
   | "sin_consentimiento"
   | "motivo_requerido"
+  | "formato_no_soportado"
   | "sin_sesion"
   | "pin_incorrecto"
   | "rol_no_permitido"
@@ -31,6 +32,7 @@ export const ERRORES: Record<CodigoError, { status: number; mensaje: string }> =
   identificador_invalido: { status: 400, mensaje: "Escribe un DPI de 13 dígitos o un identificador TMP-." },
   sin_consentimiento: { status: 400, mensaje: "Falta el consentimiento de la paciente." },
   motivo_requerido: { status: 400, mensaje: "Escribe el motivo, con al menos 10 caracteres." },
+  formato_no_soportado: { status: 400, mensaje: "Sube un Excel, CSV o Access." },
   sin_sesion: { status: 401, mensaje: "Tu sesión terminó. Vuelve a entrar." },
   pin_incorrecto: { status: 401, mensaje: "DPI o PIN incorrectos." },
   rol_no_permitido: { status: 403, mensaje: "No tienes acceso a esto." },
@@ -101,4 +103,4 @@ function porStatus(status: number): CodigoError {
 }
 
 /** Errores que marcan un campo en rojo (400 de la tabla). */
-export const ERRORES_DE_CAMPO: CodigoError[] = ["validacion", "identificador_invalido", "sin_consentimiento", "motivo_requerido"];
+export const ERRORES_DE_CAMPO: CodigoError[] = ["validacion", "identificador_invalido", "sin_consentimiento", "motivo_requerido", "formato_no_soportado"];

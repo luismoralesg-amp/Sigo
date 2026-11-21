@@ -1,13 +1,13 @@
 "use client";
 /**
- * Código y QR temporal (POST /pacientes/{dpi}/consentimientos).
+ * Código y QR temporal (POST /pacientes/{id}/codigos).
  * Sirve una sola vez y se puede activar durante 10 minutos; muestra la cuenta regresiva hasta `vence_en`.
  * La paciente lo pide desde su celular, o la enfermera a pedido de la paciente sin smartphone.
  */
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { KeyRound, LoaderCircle, MessageSquareText, RefreshCw, Timer } from "lucide-react";
-import type { Consentimiento } from "@/lib/types";
+import type { CodigoTemporal } from "@/lib/types";
 import { api, DURACION_ACCESO_TEXTO } from "@/lib/api/cliente";
 import { aErrorApi, type ErrorApi } from "@/lib/api/errores";
 import { formatoRestante, useCuentaRegresiva } from "@/lib/api/usar";
@@ -15,17 +15,17 @@ import { Boton } from "@/components/ui/button";
 import { MensajeError } from "@/components/estado";
 import { cn } from "@/lib/utils";
 
-export function GenerarCodigo({ dpi, para }: { dpi: string; para: "paciente" | "enfermera" }) {
+export function GenerarCodigo({ pacienteId, para }: { pacienteId: string; para: "paciente" | "enfermera" }) {
   const [sms, setSms] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState<ErrorApi | null>(null);
-  const [c, setC] = useState<Consentimiento | null>(null);
+  const [c, setC] = useState<CodigoTemporal | null>(null);
 
   async function generar() {
     setGenerando(true);
     setError(null);
     try {
-      setC(await api.generarCodigo(dpi, { enviar_sms: sms }));
+      setC(await api.generarCodigo(pacienteId, { enviar_sms: sms }));
     } catch (e) {
       setError(aErrorApi(e));
     } finally {
@@ -52,7 +52,7 @@ export function GenerarCodigo({ dpi, para }: { dpi: string; para: "paciente" | "
   );
 }
 
-function CodigoVigente({ c, para, onOtro }: { c: Consentimiento; para: "paciente" | "enfermera"; onOtro: () => void }) {
+function CodigoVigente({ c, para, onOtro }: { c: CodigoTemporal; para: "paciente" | "enfermera"; onOtro: () => void }) {
   const restante = useCuentaRegresiva(c.vence_en);
   const vencido = restante === 0;
   const [svg, setSvg] = useState("");

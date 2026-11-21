@@ -1,0 +1,15 @@
+{
+  "paciente": {
+    "id": "p_20",
+    "dpi": "TMP-20261121-7KQ2",
+    "nombre": "Diego Ixcoy Batz",
+    "fecha_nacimiento": "2025-11-20",
+    "sexo": "M",
+    "comunidad": "Chichicastenango",
+    "alergias": [],
+    "condiciones_cronicas": [],
+    "version": 1
+  },
+  "pin_inicial": "615204",
+  "advertencias": []
+}

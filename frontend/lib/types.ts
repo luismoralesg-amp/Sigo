@@ -1,11 +1,14 @@
 /**
- * Tipos del contrato v2 entre frontend y backend de Sigo.
- * Copiados tal cual de docs/contrato-v2.md, sección "Modelos de datos".
+ * Tipos del contrato v3 (v1 congelada) entre frontend y backend de Sigo.
+ * Copiados tal cual de docs/contrato-v3.md, sección "Modelos de datos".
  * El backend responde con esta forma exacta. No renombrar campos: si el contrato cambia, se cambia allá primero.
  * Única diferencia con el documento: cada tipo lleva `export` para poder importarlo.
  */
 
-// Un dato leído por la IA o por la importación. "baja" = se pinta en amarillo y se revisa primero.
+// Un dato leído por la IA o por la importación. La confianza pública es solo "alta" o "baja".
+// Campo en blanco -> { valor: null, confianza: "baja" }.
+// La ficha dice "Ninguna" -> { valor: [], confianza: "alta" }.
+// "baja" se pinta en amarillo y se revisa primero.
 export type Campo<T> = { valor: T | null; confianza: "alta" | "baja" };
 
 // 13 dígitos, o "TMP-" + fecha AAAAMMDD + "-" + 4 caracteres aleatorios: "TMP-20261121-7KQ2"
@@ -21,8 +24,8 @@ export type Centro = {
   departamento: string;
 };
 
-// Para paciente, centro = null y dpi = el suyo.
-export type Usuario = { id: string; nombre: string; rol: Rol; centro: Centro | null; dpi: Identificador | null; debe_cambiar_pin: boolean };
+// Para paciente, centro = null y paciente_id = su id.
+export type Usuario = { id: string; nombre: string; rol: Rol; centro: Centro | null; paciente_id: string | null; debe_cambiar_pin: boolean };
 
 // Lo que la IA o la importación leyeron, antes de que una persona confirme.
 export type Extraccion = {
@@ -30,7 +33,7 @@ export type Extraccion = {
     nombre: Campo<string>;
     dpi: Campo<string>;
     fecha_nacimiento: Campo<string>;    // YYYY-MM-DD
-    sexo: Campo<"F" | "M">;
+    sexo: Campo<"F" | "M">;             // otro valor ("Otro", "X") -> null + "baja"
     comunidad: Campo<string>;
     alergias: Campo<string[]>;
     condiciones_cronicas: Campo<string[]>;
@@ -43,22 +46,25 @@ export type Extraccion = {
     vacunas: Campo<string[]>;
     pagina: number;                     // foto o fila de donde salió (0, 1, 2...)
   }>;
+  error?: string | null;                // por ejemplo, "La foto no parece una ficha clínica"
 };
 
 export type Ficha = {
   id: string;
-  dpi: Identificador;                   // la ficha nace ligada al paciente buscado o creado
+  paciente_id: string;                  // la ficha nace ligada al paciente buscado o creado
   origen: "foto" | "importacion";
+  importacion_id: string | null;
   client_id: string | null;             // lo genera el celular; null si vino de importación
   estado: "procesando" | "lista" | "confirmada" | "error";
   originales: string[];                 // URLs firmadas de las fotos o del archivo, válidas al menos 1 hora
   extraccion: Extraccion | null;        // null mientras estado = "procesando"
-  error: string | null;
+  error: string | null;                 // viene de Extraccion.error cuando estado = "error"
   creada_en: string;
 };
 
 export type Paciente = {
-  dpi: Identificador;
+  id: string;
+  dpi: Identificador;                   // DPI o TMP-
   nombre: string;
   fecha_nacimiento: string | null;
   sexo: "F" | "M" | null;
@@ -98,10 +104,10 @@ export type Expediente = {
   acceso_vence_en: string | null;
 };
 
-export type Consentimiento = {
+export type CodigoTemporal = {
   codigo: string;                       // 8 caracteres aleatorios, sin 0, O, 1 ni I: "K7P4-Q2XM"
   qr: string;                           // texto que el frontend convierte en QR
-  vence_en: string;                     // hasta cuándo se puede activar (10 minutos)
+  vence_en: string;                     // hasta cuándo se puede canjear (10 minutos)
   enviado_por_sms: boolean;
 };
 
@@ -117,11 +123,18 @@ export type Acceso = {
 
 export type Fuente = { consulta_id: string; version: number; original_url: string; campo: string };
 
-export type Importacion = {
-  id: string;
-  archivo: string;
-  filas: number;
-  columnas: string[];                   // como vienen en el archivo
-  mapeo_sugerido: Record<string, string | null>; // columna → campo ("DPI" → "dpi"); null = se ignora
-  muestra: Record<string, string>[];    // las primeras 5 filas, tal cual
+// Respuesta de POST /importaciones (forma congelada por el backend).
+export type ResultadoImportacion = {
+  importacion_id: string;
+  total_filas: number;
+  creados: number;
+  actualizados: number;
+  con_errores: number;
+  filas: Array<{
+    fila: number;
+    dpi: string | null;
+    estado: "creado" | "actualizado" | "error";
+    expediente_id: string | null;       // id del paciente
+    error: string | null;
+  }>;
 };

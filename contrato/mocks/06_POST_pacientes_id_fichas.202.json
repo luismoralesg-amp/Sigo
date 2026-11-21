@@ -1,0 +1,14 @@
+{
+  "id": "f_88",
+  "paciente_id": "p_12",
+  "origen": "foto",
+  "importacion_id": null,
+  "client_id": "7c1e2b9a-4f6d-4e1a-9c3b-1d2e3f4a5b6c",
+  "estado": "procesando",
+  "originales": [
+    "/demo/ficha-rosa-2025.jpg"
+  ],
+  "extraccion": null,
+  "error": null,
+  "creada_en": "2026-11-21T10:42:00-06:00"
+}

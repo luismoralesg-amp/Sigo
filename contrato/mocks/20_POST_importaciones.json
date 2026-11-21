@@ -1,0 +1,30 @@
+{
+  "importacion_id": "imp_07",
+  "total_filas": 3,
+  "creados": 1,
+  "actualizados": 1,
+  "con_errores": 1,
+  "filas": [
+    {
+      "fila": 2,
+      "dpi": "2547896330801",
+      "estado": "actualizado",
+      "expediente_id": "p_12",
+      "error": null
+    },
+    {
+      "fila": 3,
+      "dpi": null,
+      "estado": "creado",
+      "expediente_id": "p_31",
+      "error": null
+    },
+    {
+      "fila": 4,
+      "dpi": "12345",
+      "estado": "error",
+      "expediente_id": null,
+      "error": "DPI con formato inválido"
+    }
+  ]
+}
