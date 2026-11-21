@@ -1,0 +1,14 @@
+{
+  "token": "dev-enfermera",
+  "tipo": "Bearer",
+  "usuario": {
+    "id": "enfermera-ana",
+    "rol": "enfermera",
+    "nombre": "Ana López",
+    "dpi": null,
+    "centro": "Puesto de Salud Chichicastenango",
+    "correo": "ana.lopez@puesto.sigo.gt",
+    "datos_inventados": true
+  },
+  "aviso": "Token de demostración. PIN o contraseña inventados, no uses credenciales reales."
+}

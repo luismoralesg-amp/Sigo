@@ -1,0 +1,14 @@
+{
+  "token": "dev-paciente",
+  "tipo": "Bearer",
+  "usuario": {
+    "id": "paciente-rosa",
+    "rol": "paciente",
+    "nombre": "Rosa Ajpop",
+    "dpi": "2483175631406",
+    "centro": null,
+    "correo": null,
+    "datos_inventados": true
+  },
+  "aviso": "Token de demostración. En producción usá una sesión firmada y guardala para el modo sin internet."
+}

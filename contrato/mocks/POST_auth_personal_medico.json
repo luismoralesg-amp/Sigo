@@ -1,0 +1,14 @@
+{
+  "token": "dev-medico",
+  "tipo": "Bearer",
+  "usuario": {
+    "id": "medico-carlos",
+    "rol": "medico",
+    "nombre": "Carlos Méndez",
+    "dpi": null,
+    "centro": "Hospital Regional de Quiché",
+    "correo": "carlos.mendez@hospital.sigo.gt",
+    "datos_inventados": true
+  },
+  "aviso": "Token de demostración. El médico todavía no tiene consentimiento activo."
+}

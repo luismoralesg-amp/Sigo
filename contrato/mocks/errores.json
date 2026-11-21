@@ -1,0 +1,30 @@
+{
+  "401": {
+    "error": "no_autenticado",
+    "mensaje": "Iniciá sesión para continuar."
+  },
+  "403_paciente_escribe": {
+    "error": "prohibido",
+    "mensaje": "El o la paciente solo puede ver y descargar su expediente. No puede modificarlo ni borrarlo."
+  },
+  "403_medico_sin_consentimiento": {
+    "error": "prohibido",
+    "mensaje": "El médico solo puede leer este expediente con un consentimiento temporal (código o QR) vigente."
+  },
+  "403_medico_escribe": {
+    "error": "prohibido",
+    "mensaje": "El médico tiene acceso de solo lectura. No puede modificar, exportar ni borrar."
+  },
+  "403_borrar": {
+    "error": "prohibido",
+    "mensaje": "Ningún rol puede borrar expedientes. El historial es de solo agregado."
+  },
+  "403_ajeno": {
+    "error": "prohibido",
+    "mensaje": "Solo podés ver tu propio expediente."
+  },
+  "422_dpi": {
+    "error": "dpi_invalido",
+    "mensaje": "El CUI / DPI no pasó la validación del dígito verificador, el departamento o el municipio."
+  }
+}

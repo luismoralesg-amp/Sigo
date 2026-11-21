@@ -1,0 +1,1141 @@
+openapi: 3.1.0
+info:
+  title: SIGO API
+  summary: Tu historia te sigue.
+  description: |
+    BORRADOR v0. Este contrato lo propone el backend como punto de partida.
+    El frontend (Arturo) también va a entregar su propio contrato. Antes de
+    unir las mitades hay que reconciliarlos y congelar una v1. Ver LEEME.md,
+    sección «Cómo reconciliar contratos».
+
+    API de SIGO para el hackathon open2 Build & Pitch, track Legacy
+    (21 de noviembre de 2026, 8:00–19:00, hora de Guatemala).
+
+    El historial en papel y el de sistemas viejos (Excel / Access) se
+    digitalizan y se ligan al DPI. La IA nunca guarda sola: una persona
+    (la enfermera) confirma. Nadie puede borrar; el historial es de solo
+    agregado y cada corrección queda versionada.
+
+    Todos los datos de ejemplo son inventados. No uses fichas reales.
+
+    Roles:
+      - paciente: dueño del expediente. Solo ve y descarga el suyo.
+        Entra con DPI + PIN. No modifica ni borra.
+      - enfermera: escanea, sube, revisa, confirma, crea y corrige
+        (la corrección crea una versión nueva y el original se conserva).
+        No borra.
+      - medico: solo lectura, y únicamente con un consentimiento
+        temporal del paciente (código o QR, con fecha de vencimiento).
+        No modifica, no exporta y no borra.
+  version: 0.1.0-draft
+  x-estado: borrador-v0
+  license:
+    name: Uso interno del equipo SIGO (hackathon)
+servers:
+  - url: http://localhost:8000
+    description: Esqueleto local (hora de Guatemala)
+tags:
+  - name: Auth
+  - name: Mi expediente
+  - name: Consentimientos
+  - name: Fichas
+  - name: Pacientes
+  - name: Bitácora
+security:
+  - bearerAuth: []
+paths:
+  /auth/paciente:
+    post:
+      tags: [Auth]
+      summary: Entrada del paciente con DPI y PIN
+      security: []
+      operationId: authPaciente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginPaciente"
+            examples:
+              rosa:
+                value:
+                  dpi: "2483175631406"
+                  pin: "4821"
+      responses:
+        "200":
+          description: Sesión creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sesion"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "422":
+          $ref: "#/components/responses/DPIInvalido"
+  /auth/personal:
+    post:
+      tags: [Auth]
+      summary: Entrada del personal (enfermera o médico)
+      security: []
+      operationId: authPersonal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginPersonal"
+      responses:
+        "200":
+          description: Sesión creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sesion"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Usuario de la sesión actual
+      operationId: authMe
+      responses:
+        "200":
+          description: Perfil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+  /mi-expediente:
+    get:
+      tags: [Mi expediente]
+      summary: Expediente del paciente autenticado
+      description: Solo rol paciente. Devuelve únicamente su propio expediente.
+      operationId: miExpediente
+      responses:
+        "200":
+          description: Expediente propio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paciente"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+  /mi-expediente/exportar:
+    get:
+      tags: [Mi expediente]
+      summary: Descarga del expediente propio
+      operationId: miExpedienteExportar
+      parameters:
+        - $ref: "#/components/parameters/FormatoExportacion"
+      responses:
+        "200":
+          description: Archivo generado
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/markdown:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "422":
+          $ref: "#/components/responses/ErrorValidacion"
+  /mi-expediente/bitacora:
+    get:
+      tags: [Mi expediente]
+      summary: Bitácora de accesos al expediente propio
+      operationId: miExpedienteBitacora
+      responses:
+        "200":
+          description: Eventos que involucran al paciente autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bitacora"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+  /consentimientos:
+    get:
+      tags: [Consentimientos]
+      summary: Lista consentimientos
+      description: |
+        El paciente ve los suyos. La enfermera puede verlos del DPI que
+        atiende. El médico solo ve el que activó, si sigue vigente.
+      operationId: listarConsentimientos
+      parameters:
+        - name: dpi
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListaConsentimientos"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+    post:
+      tags: [Consentimientos]
+      summary: El paciente emite un consentimiento temporal (código o QR)
+      operationId: crearConsentimiento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NuevoConsentimiento"
+      responses:
+        "201":
+          description: Consentimiento creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Consentimiento"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+  /consentimientos/activar:
+    post:
+      tags: [Consentimientos]
+      summary: El médico canjea el código o QR
+      operationId: activarConsentimiento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivarConsentimiento"
+      responses:
+        "200":
+          description: Consentimiento activado para ese médico
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Consentimiento"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/ErrorValidacion"
+  /consentimientos/{id}/revocar:
+    post:
+      tags: [Consentimientos]
+      summary: El paciente revoca un consentimiento (no se borra, se cierra)
+      operationId: revocarConsentimiento
+      parameters:
+        - $ref: "#/components/parameters/IdRecurso"
+      responses:
+        "200":
+          description: Revocado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Consentimiento"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+  /fichas/foto:
+    post:
+      tags: [Fichas]
+      summary: La enfermera sube la foto de una ficha
+      description: Solo rol enfermera. La extracción queda pendiente de confirmación.
+      operationId: subirFichaFoto
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Campos extraídos, aún no guardados como confirmados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FichaExtraida"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+  /fichas/{id}/confirmar:
+    post:
+      tags: [Fichas]
+      summary: La enfermera confirma (y si hace falta corrige) la extracción
+      description: |
+        Obligatorio. La IA nunca guarda sola. Las correcciones crean una
+        versión nueva y el original se conserva. Nadie puede borrar.
+      operationId: confirmarFicha
+      parameters:
+        - $ref: "#/components/parameters/IdRecurso"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmacionFicha"
+      responses:
+        "200":
+          description: Ficha confirmada y versionada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FichaConfirmada"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DPIInvalido"
+  /importar:
+    post:
+      tags: [Fichas]
+      summary: Importa Excel, CSV o Access de un sistema viejo
+      description: Solo enfermera. El archivo original se conserva intacto.
+      operationId: importarSistemaViejo
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Resultado de la importación
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultadoImportacion"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+  /pacientes/{dpi}:
+    get:
+      tags: [Pacientes]
+      summary: Expediente por DPI
+      description: |
+        Enfermera: puede leerlo para atender. Médico: solo con consentimiento
+        temporal vigente. Paciente: debe usar /mi-expediente (aquí recibe 403).
+      operationId: getPaciente
+      parameters:
+        - $ref: "#/components/parameters/DpiPath"
+      responses:
+        "200":
+          description: Expediente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paciente"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DPIInvalido"
+  /pacientes/{dpi}/linea-tiempo:
+    get:
+      tags: [Pacientes]
+      summary: Línea de tiempo clínica
+      operationId: getLineaTiempo
+      parameters:
+        - $ref: "#/components/parameters/DpiPath"
+      responses:
+        "200":
+          description: Eventos ordenados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LineaTiempo"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DPIInvalido"
+  /pacientes/{dpi}/alertas:
+    get:
+      tags: [Pacientes]
+      summary: Alertas clínicas (alergias contra medicamentos)
+      operationId: getAlertas
+      parameters:
+        - $ref: "#/components/parameters/DpiPath"
+      responses:
+        "200":
+          description: Alertas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListaAlertas"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DPIInvalido"
+  /pacientes/{dpi}/preguntar:
+    post:
+      tags: [Pacientes]
+      summary: Pregunta al CAG local sobre el expediente
+      description: Enfermera, o médico con consentimiento vigente.
+      operationId: preguntarCAG
+      parameters:
+        - $ref: "#/components/parameters/DpiPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreguntaCAG"
+      responses:
+        "200":
+          description: Respuesta con citas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RespuestaCAG"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DPIInvalido"
+  /pacientes/{dpi}/exportar:
+    get:
+      tags: [Pacientes]
+      summary: Exporta una copia desde el puesto
+      description: |
+        Solo enfermera (para entregar una copia en el puesto).
+        El paciente descarga por /mi-expediente/exportar.
+        El médico no exporta.
+      operationId: exportarPaciente
+      parameters:
+        - $ref: "#/components/parameters/DpiPath"
+        - $ref: "#/components/parameters/FormatoExportacion"
+      responses:
+        "200":
+          description: Archivo generado
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/markdown:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DPIInvalido"
+  /pacientes/{dpi}/versiones:
+    get:
+      tags: [Pacientes]
+      summary: Historial de versiones (solo agregado)
+      operationId: getVersiones
+      parameters:
+        - $ref: "#/components/parameters/DpiPath"
+      responses:
+        "200":
+          description: Versiones
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListaVersiones"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DPIInvalido"
+  /pacientes/{dpi}/correcciones:
+    post:
+      tags: [Pacientes]
+      summary: La enfermera corrige un expediente ya confirmado
+      description: Crea una versión nueva. El original se conserva. No hay borrado.
+      operationId: corregirPaciente
+      parameters:
+        - $ref: "#/components/parameters/DpiPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Correccion"
+      responses:
+        "200":
+          description: Corrección versionada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultadoCorreccion"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DPIInvalido"
+  /bitacora:
+    get:
+      tags: [Bitácora]
+      summary: Bitácora general
+      description: Solo enfermera (en el demo). El paciente usa /mi-expediente/bitacora.
+      operationId: getBitacora
+      responses:
+        "200":
+          description: Eventos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bitacora"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: token
+      description: |
+        Tokens de demostración: `dev-paciente`, `dev-enfermera`,
+        `dev-medico`. También se emiten al entrar con /auth/paciente
+        o /auth/personal. Guardá la sesión para el modo sin internet.
+  parameters:
+    DpiPath:
+      name: dpi
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9]{13}$"
+        examples:
+          - "2483175631406"
+    FormatoExportacion:
+      name: formato
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [txt, docx, pdf, xlsx, md, html]
+    IdRecurso:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    NoAutenticado:
+      description: Falta sesión o el PIN / la contraseña no coinciden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Prohibido:
+      description: El rol no tiene permiso para esta acción o este expediente
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NoEncontrado:
+      description: No existe
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    DPIInvalido:
+      description: CUI / DPI con formato o dígito verificador inválido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ErrorValidacion:
+      description: Solicitud inválida
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Rol:
+      type: string
+      enum: [paciente, enfermera, medico]
+    LoginPaciente:
+      type: object
+      required: [dpi, pin]
+      additionalProperties: false
+      properties:
+        dpi:
+          type: string
+        pin:
+          type: string
+          minLength: 4
+          maxLength: 6
+          description: PIN inventado de 4 a 6 dígitos. En el demo de Rosa es 4821.
+    LoginPersonal:
+      type: object
+      required: [correo, password]
+      additionalProperties: false
+      properties:
+        correo:
+          type: string
+          format: email
+        password:
+          type: string
+    Usuario:
+      type: object
+      required: [id, rol, nombre]
+      properties:
+        id:
+          type: string
+        rol:
+          $ref: "#/components/schemas/Rol"
+        nombre:
+          type: string
+        dpi:
+          type: ["string", "null"]
+        centro:
+          type: ["string", "null"]
+        correo:
+          type: ["string", "null"]
+        datos_inventados:
+          type: boolean
+    Sesion:
+      type: object
+      required: [token, tipo, usuario]
+      properties:
+        token:
+          type: string
+        tipo:
+          type: string
+          examples: [Bearer]
+        usuario:
+          $ref: "#/components/schemas/Usuario"
+        aviso:
+          type: string
+    CampoExtraido:
+      type: object
+      required: [valor, confianza, origen]
+      properties:
+        valor:
+          type: ["string", "null"]
+        confianza:
+          type: number
+          minimum: 0
+          maximum: 1
+        origen:
+          type: string
+          enum: [vision, importacion, manual, sistema]
+    FichaExtraida:
+      type: object
+      required: [id, estado, dpi, nombre]
+      properties:
+        id:
+          type: string
+        estado:
+          type: string
+          enum: [pendiente_confirmacion, confirmada]
+        datos_inventados:
+          type: boolean
+        aviso:
+          type: string
+        imagen_id:
+          type: string
+        dpi:
+          $ref: "#/components/schemas/CampoExtraido"
+        nombre:
+          $ref: "#/components/schemas/CampoExtraido"
+        sexo:
+          $ref: "#/components/schemas/CampoExtraido"
+        fecha_nacimiento:
+          $ref: "#/components/schemas/CampoExtraido"
+        fecha_consulta:
+          $ref: "#/components/schemas/CampoExtraido"
+        motivo:
+          $ref: "#/components/schemas/CampoExtraido"
+        diagnostico:
+          $ref: "#/components/schemas/CampoExtraido"
+        medicamentos:
+          $ref: "#/components/schemas/CampoExtraido"
+        alergias:
+          $ref: "#/components/schemas/CampoExtraido"
+        notas:
+          $ref: "#/components/schemas/CampoExtraido"
+        campos_baja_confianza:
+          type: array
+          items:
+            type: string
+        umbral_amarillo:
+          type: number
+    ConfirmacionFicha:
+      type: object
+      required: [confirmado]
+      properties:
+        confirmado:
+          type: boolean
+        dpi:
+          type: ["string", "null"]
+        correcciones:
+          type: object
+          additionalProperties: true
+          description: Campos corregidos a mano. El original se conserva.
+    FichaConfirmada:
+      type: object
+      required: [id, estado, version, dpi, original_conservado]
+      properties:
+        id:
+          type: string
+        estado:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        dpi:
+          type: string
+        paciente:
+          type: string
+        confirmada_por:
+          type: string
+        confirmada_en:
+          type: string
+        campos_corregidos:
+          type: array
+          items:
+            type: string
+        original_conservado:
+          type: boolean
+        aviso:
+          type: string
+    Alergia:
+      type: object
+      required: [sustancia]
+      properties:
+        id:
+          type: string
+        sustancia:
+          type: string
+        severidad:
+          type: string
+          enum: [leve, moderada, grave]
+        reaccion:
+          type: ["string", "null"]
+        registrada_en:
+          type: ["string", "null"]
+        fuente:
+          type: ["string", "null"]
+    Vacuna:
+      type: object
+      required: [nombre]
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+        fecha:
+          type: ["string", "null"]
+        dosis:
+          type: ["string", "null"]
+        fuente:
+          type: ["string", "null"]
+    Consulta:
+      type: object
+      required: [fecha]
+      properties:
+        id:
+          type: string
+        fecha:
+          type: string
+        centro:
+          type: ["string", "null"]
+        motivo:
+          type: ["string", "null"]
+        diagnostico:
+          type: ["string", "null"]
+        medicamentos:
+          type: array
+          items:
+            type: string
+        notas:
+          type: ["string", "null"]
+        version:
+          type: integer
+        fuente:
+          type: ["string", "null"]
+    Paciente:
+      type: object
+      required: [nombre, datos_inventados]
+      properties:
+        dpi:
+          type: ["string", "null"]
+        id_temporal:
+          type: ["string", "null"]
+        nombre:
+          type: string
+        sexo:
+          type: ["string", "null"]
+        fecha_nacimiento:
+          type: ["string", "null"]
+        departamento_nacimiento:
+          type: ["string", "null"]
+        municipio_nacimiento:
+          type: ["string", "null"]
+        datos_inventados:
+          type: boolean
+        aviso:
+          type: string
+        alergias:
+          type: array
+          items:
+            $ref: "#/components/schemas/Alergia"
+        vacunas:
+          type: array
+          items:
+            $ref: "#/components/schemas/Vacuna"
+        consultas:
+          type: array
+          items:
+            $ref: "#/components/schemas/Consulta"
+    EventoLineaTiempo:
+      type: object
+      required: [fecha, tipo, titulo]
+      properties:
+        fecha:
+          type: string
+        tipo:
+          type: string
+          enum: [consulta, vacuna, alergia, correccion, importacion]
+        titulo:
+          type: string
+        detalle:
+          type: ["string", "null"]
+        id_referencia:
+          type: ["string", "null"]
+    LineaTiempo:
+      type: object
+      required: [dpi, eventos]
+      properties:
+        dpi:
+          type: string
+        eventos:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventoLineaTiempo"
+    Alerta:
+      type: object
+      required: [tipo, severidad, mensaje]
+      properties:
+        id:
+          type: string
+        tipo:
+          type: string
+        severidad:
+          type: string
+          enum: [baja, media, alta]
+        mensaje:
+          type: string
+        dpi:
+          type: string
+        evidencia:
+          type: array
+          items:
+            type: object
+            properties:
+              fuente:
+                type: string
+              fragmento:
+                type: string
+    ListaAlertas:
+      type: object
+      required: [dpi, alertas]
+      properties:
+        dpi:
+          type: string
+        alertas:
+          type: array
+          items:
+            $ref: "#/components/schemas/Alerta"
+    PreguntaCAG:
+      type: object
+      required: [pregunta]
+      additionalProperties: false
+      properties:
+        pregunta:
+          type: string
+    CitaCAG:
+      type: object
+      required: [fuente, fragmento]
+      properties:
+        fuente:
+          type: string
+        fragmento:
+          type: string
+        fecha:
+          type: ["string", "null"]
+    RespuestaCAG:
+      type: object
+      required: [respuesta, citas]
+      properties:
+        respuesta:
+          type: string
+        citas:
+          type: array
+          items:
+            $ref: "#/components/schemas/CitaCAG"
+    ResultadoImportacion:
+      type: object
+      required: [archivo, filas_leidas, archivo_original_conservado]
+      properties:
+        archivo:
+          type: string
+        filas_leidas:
+          type: integer
+        importados:
+          type: array
+          items:
+            type: object
+            properties:
+              dpi:
+                type: string
+              nombre:
+                type: string
+              estado:
+                type: string
+              campos_baja_confianza:
+                type: array
+                items:
+                  type: string
+        omitidos:
+          type: array
+          items:
+            type: object
+        archivo_original_conservado:
+          type: boolean
+        aviso:
+          type: string
+    NuevoConsentimiento:
+      type: object
+      required: [duracion_minutos]
+      properties:
+        duracion_minutos:
+          type: integer
+          minimum: 5
+          maximum: 1440
+        alcance:
+          type: string
+          enum: [lectura]
+          default: lectura
+    ActivarConsentimiento:
+      type: object
+      required: [codigo]
+      properties:
+        codigo:
+          type: string
+    Consentimiento:
+      type: object
+      required: [id, dpi, codigo, alcance, estado, expira_en]
+      properties:
+        id:
+          type: string
+        dpi:
+          type: string
+        codigo:
+          type: string
+        alcance:
+          type: string
+        estado:
+          type: string
+          enum: [activo, usado, vencido, revocado]
+        creado_en:
+          type: string
+        expira_en:
+          type: string
+        duracion_minutos:
+          type: integer
+        medico_id:
+          type: ["string", "null"]
+        activado_en:
+          type: ["string", "null"]
+        qr_contenido:
+          type: string
+        aviso:
+          type: string
+    ListaConsentimientos:
+      type: object
+      properties:
+        dpi:
+          type: ["string", "null"]
+        consentimientos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Consentimiento"
+    EventoBitacora:
+      type: object
+      required: [id, en, actor_id, rol, accion]
+      properties:
+        id:
+          type: string
+        en:
+          type: string
+        actor_id:
+          type: string
+        rol:
+          type: string
+        accion:
+          type: string
+        dpi:
+          type: ["string", "null"]
+        detalle:
+          type: ["string", "null"]
+    Bitacora:
+      type: object
+      required: [eventos]
+      properties:
+        datos_inventados:
+          type: boolean
+        dpi:
+          type: string
+        eventos:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventoBitacora"
+    VersionExpediente:
+      type: object
+      required: [version, en, accion]
+      properties:
+        version:
+          type: integer
+        en:
+          type: string
+        autor_id:
+          type: string
+        rol:
+          type: string
+        accion:
+          type: string
+        resumen:
+          type: string
+    ListaVersiones:
+      type: object
+      required: [dpi, versiones]
+      properties:
+        dpi:
+          type: string
+        aviso:
+          type: string
+        versiones:
+          type: array
+          items:
+            $ref: "#/components/schemas/VersionExpediente"
+    Correccion:
+      type: object
+      required: [campos]
+      properties:
+        campos:
+          type: object
+          additionalProperties: true
+        nota:
+          type: string
+    ResultadoCorreccion:
+      type: object
+      required: [dpi, version, original_conservado]
+      properties:
+        dpi:
+          type: string
+        version:
+          type: integer
+        en:
+          type: string
+        autor_id:
+          type: string
+        original_conservado:
+          type: boolean
+        campos_corregidos:
+          type: array
+          items:
+            type: string
+        aviso:
+          type: string
+    Error:
+      type: object
+      required: [error, mensaje]
+      properties:
+        error:
+          type: string
+        mensaje:
+          type: string

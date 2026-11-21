@@ -1,0 +1,9 @@
+{
+  "id": "medico-carlos",
+  "rol": "medico",
+  "nombre": "Carlos Méndez",
+  "dpi": null,
+  "centro": "Hospital Regional de Quiché",
+  "correo": "carlos.mendez@hospital.sigo.gt",
+  "datos_inventados": true
+}

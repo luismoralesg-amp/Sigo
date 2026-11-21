@@ -1,0 +1,9 @@
+{
+  "id": "enfermera-ana",
+  "rol": "enfermera",
+  "nombre": "Ana López",
+  "dpi": null,
+  "centro": "Puesto de Salud Chichicastenango",
+  "correo": "ana.lopez@puesto.sigo.gt",
+  "datos_inventados": true
+}

@@ -1,0 +1,504 @@
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+  Reporte de errores e incongruencias: paquete
+  SIGO
+    Nov 21, 2026 · ​@Arturo
+
+
+
+  Resumen
+  El paquete tiene 32 reportes: 8 críticos, 10 de seguridad, 8 de incongruencia con la
+  propuesta y 6 menores. Lo urgente es lo que afecta el contrato antes del congelamiento
+  de las 12:00.
+
+
+     Grupo                                          Cantidad   Qué hacer
+
+     C: Críticos                                    8          C-01 a C-04 antes de las 12:00
+
+     S: Seguridad y consentimiento                  10         S-01, S-02 y S-04 primero; son rápidos
+
+     P: Incongruencias con la                       8          Decidir P-01 (emergencia) y P-02 (nombre y
+     propuesta                                                 relato)
+
+     M: Menores                                     6          Después de las 13:00
+
+
+  Orden sugerido
+
+     1. CORS, entorno y arranque en limpio (C-01 a C-03), para que el front en Vercel hable
+        con el API.
+     2. Pantalla de importación y contrato con TMP- (C-04, C-06), antes de congelar la v1.
+     3. Códigos de consentimiento aleatorios, de un solo uso y sin tokens de desarrollo en el
+        túnel (S-01, S-02, S-04).
+     4. Decidir cómo ve el médico a una persona inconsciente (P-01), porque cambia el demo.
+
+
+  Críticos: bloquean la unión del front y el back
+  Ocho reportes impiden que el front y el back funcionen juntos hoy; hay que arreglar C-
+  01 a C-04 antes de congelar la v1 del contrato.
+
+
+
+
+                                                                                                        Page 1 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+     ID         Reporte y evidencia                 Arreglo sugerido          Dueño        Estado
+
+     C-         CORS: main.py solo permite          Leer                      Luis         Pendiente
+     01          http://localhost:3000 y            SIGO_CORS_ORIGINS         (Alphagod)
+                 http://127.0.0.1:3000 .            y agregar el dominio
+                Probado: el origen                  de Vercel y el del
+                 https://sigo.vercel.app y          túnel
+                uno de trycloudflare.com
+                reciben 400 sin cabecera
+                 access-control-allow-
+                origin . El front en Vercel no
+                podrá llamar al API.
+
+     C-         Ninguna variable de                 Cargar el entorno         Backend 1    Pendiente
+     02          .env.example se lee: no hay        (pydantic-settings o
+                 os.environ ni getenv en            python-dotenv),
+                 app/ . SQLite, Ollama,             conectar cada
+                 VISION_MODE y                      variable y avisar en el
+                 SIGO_PUBLIC_API_URL no             LEEME que hoy el
+                tienen efecto. El almacén es un     almacén es en
+                diccionario en memoria que se       memoria
+                reinicia en cada arranque.
+
+     C-         Plan B de hosting roto:             Copiar los mocks          Luis         Pendiente
+     03          datos.py lee                       dentro de app/ o          (Alphagod)
+                 ../contrato/mocks al               desplegar el repo
+                importar el módulo. Si se sube      completo; probar el
+                solo backend-alphagod-              arranque en limpio
+                equipo a Railway o Render, el
+                API no arranca. fichas/foto y
+                 preguntar también leen esos
+                archivos.
+
+     C-         La importación no tiene             Agregar la tarea al       Arturo       Pendiente
+     04         pantalla: /importar está en el      front (subir archivo,     (front)
+                contrato, pero el prompt y las      ver el mapeo de
+                tareas de Arturo no incluyen        columnas, confirmar)
+                ninguna pantalla de importar, y     e incluirla en el
+                el ensayo del LEEME tampoco.        ensayo
+                Es la mitad “sistema viejo” del
+                track.
+
+
+
+
+                                                                                                Page 2 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+     ID         Reporte y evidencia                 Arreglo sugerido        Dueño        Estado
+
+     C-          POST /importar del esqueleto       Implementar la          Backend 2    Pendiente
+     05         lee el archivo y lo descarta:       lectura real (pandas
+                devuelve siempre a Juan Tecún       para Excel y CSV,
+                con 1 fila, sin importar qué se      mdbtools o pyodbc
+                suba.                               para Access) con
+                                                    mapeo de columnas y
+                                                    revisión
+
+     C-         Contrato contra código:             Ajustar el patrón del   Luis         Pendiente
+     06         OpenAPI exige ^[0-9]{13}$           contrato para aceptar   (Alphagod)
+                en el parámetro {dpi} , pero el     TMP-… y agregar un
+                backend acepta TMP-… para           paciente niño de
+                niños sin DPI. Un cliente           ejemplo
+                generado del contrato no
+                puede llamar esas rutas.
+                Además TMP-… devuelve 404,
+                porque no hay ningún paciente
+                niño de ejemplo.
+
+     C-         CAG y visión aún no existen en      Conectar Ollama y el    Backend 2    Pendiente
+     07         el código:                          modelo de visión;       (CAG) y
+                 /pacientes/{dpi}/preguntar         medir latencia antes    Backend 1
+                devuelve el mock de Rosa o,         de las 12:00 y grabar   (visión)
+                para otros pacientes, repite la     el video de respaldo
+                pregunta; /fichas/foto
+                devuelve siempre la misma
+                ficha de Rosa sin leer la imagen.
+
+     C-         Confirmar no guarda la              Al confirmar, crear o   Backend 1    Pendiente
+     08         consulta:                           actualizar paciente,
+                 /fichas/{id}/confirmar solo        consulta, alergias y
+                agrega una versión y el             vacunas, con versión
+                expediente no cambia. Si el DPI     y original conservado
+                no existe, crea una lista de
+                versiones huérfana. Hoy lo
+                confirmado no aparece en la
+                línea de tiempo.
+
+
+
+
+                                                                                              Page 3 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+  Seguridad y consentimiento
+  Diez reportes sobre acceso y consentimiento, que es lo que más pesa en el
+  diferenciador; S-01, S-02 y S-04 se arreglan en menos de una hora.
+
+
+     ID         Reporte y evidencia                    Arreglo sugerido      Dueño        Estado
+
+     S-         Códigos de consentimiento              Código aleatorio      Backend 2    Pendiente
+     01         predecibles: el código es SIGO-        de 8 o más
+                más los últimos 4 caracteres de un     caracteres
+                contador. A Juan le salieron SIGO-     ( secrets ), único
+                1002 , SIGO-1005 y SIGO-1008 .         por emisión
+                Probando SIGO-1000 a SIGO-1014
+                con la cuenta de médico acerté 3.
+                Pasados 10 000 ids los códigos se
+                repiten y el canje toma el primero
+                que coincide (esto último, por
+                lectura del código).
+
+     S-         Códigos reutilizables: el mismo        Rechazar con 409      Backend 2    Pendiente
+     02         código se canjeó dos veces con 200     si ya está usado;
+                y estado usado . activar no            un solo uso
+                rechaza consentimientos ya usados
+                y reasigna medico_id en cada
+                canje; otro médico con el código se
+                quedaría con el acceso (por lectura:
+                el demo tiene un solo médico).
+
+     S-         Sin límite de intentos: ni para        Bloqueo temporal      Backend 1    Pendiente
+     03         canjear códigos ni para el PIN de 4    tras 5 fallos y PIN
+                dígitos del paciente. El DPI no es     más largo
+                secreto.
+
+     S-         Los tokens dev-paciente , dev-         Desactivar los        Luis         Pendiente
+     04         enfermera y dev-medico valen sin       tokens fijos si       (Alphagod)
+                iniciar sesión. Probado: dev-           SIGO_ENV no es
+                enfermera lee a Rosa con 200. Con      desarrollo
+                el túnel público, cualquiera que
+                sepa esa cadena actúa como
+                enfermera.
+
+
+
+
+                                                                                               Page 4 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+     ID         Reporte y evidencia                       Arreglo sugerido      Dueño        Estado
+
+     S-          rls.sql : la política                    Quitar el UPDATE      Luis         Pendiente
+     05          medico_activa_consentimiento             directo; canjear      (Alphagod)
+                permite a cualquier médico hacer          con una función
+                UPDATE de cualquier fila de               security
+                consentimientos , sin restringir fila     definer que solo
+                ni columnas. Podría alargar               cambie estado,
+                expira_en o asignarse el                   medico_id y
+                consentimiento.                           fecha
+
+     S-          rls.sql : la enfermera tiene             Sin UPDATE; las       Luis         Pendiente
+     06         UPDATE sobre pacientes y                  correcciones solo     (Alphagod)
+                 consultas . Puede sobrescribir sin       se insertan en
+                dejar versión, lo que contradice          versiones
+                “solo agregado” y “el original se
+                conserva”.
+
+     S-          rls.sql : la política                    Insertar la           Luis         Pendiente
+     07          insertar_bitacora deja a                 bitácora solo         (Alphagod)
+                cualquier usuario autenticado             desde el backend,
+                insertar eventos sobre cualquier          con el actor
+                DPI. La bitácora se puede falsificar,     tomado del token
+                incluso por un paciente.
+
+     S-          rls.sql : alergias , vacunas y           Escribir las          Luis         Pendiente
+     08          fichas tienen RLS activado sin           políticas faltantes   (Alphagod)
+                ninguna política (el comentario dice      y documentar que
+                “se repite el patrón” y no se repitió).   RLS solo protege
+                Además .env.example usa la clave          accesos directos
+                de servicio, que se salta RLS:            desde el cliente
+                mientras FastAPI la use, RLS no es
+                una segunda capa.
+
+     S-         La enfermera lee y exporta                Limitar por centro    Backend 1    Pendiente
+     09         cualquier expediente del país, y          y ocultar los
+                 GET /consentimientos le muestra          códigos a la
+                los códigos de todos los pacientes        enfermera
+                (probado). No hay alcance por
+                puesto ni consentimiento.
+                Contradice el “mínimo necesario”
+                de la propuesta.
+
+
+
+
+                                                                                                  Page 5 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+     ID         Reporte y evidencia                          Arreglo sugerido      Dueño        Estado
+
+     S-         Exportación sin escape: una nota             Escapar los           Backend 2    Pendiente
+     10         con <script> e <img onerror>                 campos o usar -f
+                quedó intacta en el HTML                     markdown-
+                exportado (probado), porque                  raw_html ;
+                Pandoc acepta HTML crudo en                  bloquear la carga
+                Markdown. Las notas vienen de la             de recursos
+                IA y de archivos importados. Con             externos en
+                PDF, WeasyPrint podría cargar                WeasyPrint
+                URLs del HTML (no probado).
+
+
+
+
+  Incongruencias con la propuesta
+  Ocho puntos donde el paquete se aparta de la propuesta corregida; P-01 necesita una
+  decisión del equipo, no solo código.
+
+
+     ID          Reporte y evidencia                Arreglo sugerido             Dueño          Estado
+
+     P-          Emergencia: ahora el               Decidir: consentimiento      Luis           Pendiente
+     01          médico no ve nada sin el           previo, o acceso de          (Alphagod) y
+                 código del paciente. Eso           emergencia justificado       Pitch
+                 rompe el caso de la                con bitácora reforzada y
+                 persona inconsciente con           aviso al paciente;
+                 su DPI y la escena del             actualizar el demo
+                 hospital de la propuesta,
+                 donde el juez escribe el
+                 DPI. No existe acceso de
+                 emergencia.
+
+
+
+
+                                                                                                     Page 6 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+     ID          Reporte y evidencia                Arreglo sugerido             Dueño            Estado
+
+     P-          Nombre y relato: el                Fijar un solo nombre y       Pitch            Pendiente
+     02          producto ahora es SIGO             un solo relato; actualizar
+                 (antes Expediente Vivo).           propuesta, pitch y
+                 Rosa es de                         carteles
+                 Chichicastenango (Quié)
+                 y el médico del Hospital
+                 Regional de Quié; la
+                 propuesta usa Aldea
+                 Chuicacá en Totonicapán
+                 y el hospital de Xela.
+                 Carteles, guion y slides no
+                 coinciden.
+
+     P-          Exportación al sistema             Agregar una                  Backend 2        Pendiente
+     03          oficial: las 6 salidas son         exportación JSON
+                 documentos para                    simulada o quitar la
+                 humanos (TXT, DOCX,                afirmación del pitch
+                 PDF, XLSX, MD, HTML). No
+                 hay JSON tipo FHIR para
+                 el MSPAS o X-Road; lo que
+                 dice el pitch no tiene
+                 respaldo.
+
+     P-          Offline: el front solo             Añadir la cola de fotos o    Arturo (front)   Pendiente
+     04          guarda la sesión y “datos          presentar el modo            y Pitch
+                 básicos”; no hay cola de           offline como siguiente
+                 fotos pendientes. El               paso
+                 LEEME admite que un
+                 login nuevo necesita red.
+                 El pitch habla de área rural
+                 sin internet.
+
+
+
+
+                                                                                                       Page 7 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+     ID          Reporte y evidencia                Arreglo sugerido          Dueño            Estado
+
+     P-          DPI y fichas viejas: la            Verificar con RENAP y     Luis             Pendiente
+     05          alergia de Rosa está               definir qué se hace con   (Alphagod)
+                 registrada en 2005 en una          fichas sin DPI
+                 ficha de papel y ligada a          (coincidencia por
+                 un DPI. Hay que verificar          nombre y fecha,
+                 desde cuándo se emite el           confirmada por la
+                 DPI; hasta donde sé es             enfermera)
+                 posterior, así que las
+                 fichas más viejas no lo
+                 traerían.
+
+     P-          Notas de utilería en los           Quitar la nota de los     Backend 2        Pendiente
+     06          datos: la consulta con-            mocks
+                 002 de Rosa dice “El
+                 detector de SIGO debe
+                 marcar alerta por alergia a
+                 penicilina”. Sale tal cual en
+                 pantalla y en la
+                 exportación y delata el
+                 montaje.
+
+     P-          Alertas: el mensaje está           Usar el sexo del          Backend 2 y      Pendiente
+     07          fijo en femenino (“es              paciente, ampliar las     Arturo (front)
+                 alérgica”); con un                 familias y mostrar
+                 paciente hombre sale               siempre el banner de
+                 igual (probado). Solo              alergias
+                 cubre la familia de la
+                 penicilina, aunque
+                 TAREAS habla de alergia
+                 contra medicamento en
+                 general. Además solo se
+                 activa si hay una receta en
+                 conflicto; la propuesta
+                 mostraba la alergia
+                 siempre en rojo.
+
+
+
+
+                                                                                                    Page 8 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+     ID          Reporte y evidencia                Arreglo sugerido             Dueño         Estado
+
+     P-          Tiempos: la propuesta              Recalcular los bloques a     Pitch         Pendiente
+     08          tiene un plan de 24 h y un         11 h y confirmar el
+                 demo de 3 minutos dentro           tiempo real del pitch
+                 de un pitch de 5. El               con los organizadores
+                 hackathon es de 8:00 a
+                 19:00 (11 h) y el LEEME
+                 deja 18:30 a 19:00 para el
+                 pitch.
+
+
+
+
+  Menores: pulir después del congelamiento
+  Seis reportes que no bloquean el demo; se pueden atender después de las 13:00 o dejar
+  como siguiente paso.
+
+
+     ID          Reporte y evidencia                      Arreglo sugerido         Dueño       Estado
+
+     M-           dpi.py rechaza todo CUI cuyo            Mostrar advertencia      Backend 1   Pendiente
+     01          residuo dé 10. El propio docstring       en vez de bloquear;
+                 admite que el anexo de la SAT no         la enfermera
+                 define ese caso y que la tabla de        confirma
+                 coeficientes no está impresa. Un
+                 DPI real válido que un juez
+                 escriba en el demo podría salir
+                 como inválido.
+
+     M-          Los conteos de municipios están          Tratar el municipio      Backend 1   Pendiente
+     02          fijos en la tabla SAT v1.7.9; el         fuera de tabla como
+                 propio código advierte que               aviso, no como error
+                 pueden cambiar si se crean
+                 municipios. Un municipio nuevo
+                 haría rechazar un DPI real.
+
+
+
+
+                                                                                                    Page 9 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+     ID          Reporte y evidencia                 Arreglo sugerido        Dueño        Estado
+
+     M-           requirements.txt no fija           Separar                 Luis         Pendiente
+     03          versiones ( >= ), mezcla            requirements-           (Alphagod)
+                 dependencias de prueba              dev.txt , fijar
+                 ( pytest , openapi-spec-            versiones y agregar
+                 validator ) con las de ejecución    lo que falta
+                 y no incluye lo que faltaría para
+                 importar y leer el entorno
+                 (pandas, dotenv o pydantic-
+                 settings, cliente de Ollama).
+
+     M-          Las pruebas pasan (38 de 38),       Agregar pruebas de      Backend 2    Pendiente
+     04          pero los archivos de prueba         código único, un solo
+                 cubren DPI, OpenAPI, permisos y     uso y origen
+                 exportación; no hay pruebas del     permitido
+                 flujo de consentimiento ni de
+                 CORS. Por eso S-01, S-02 y C-01
+                 pasan desapercibidos.
+
+     M-           VISION_MODE=cloud envía la         Decidir el modo         Pitch        Pendiente
+     05          foto de la ficha a un servicio      antes del demo y
+                 externo. El pitch habla de datos    alinear el guion
+                 de salud y de procesamiento
+                 local; si se usa la nube en el
+                 demo, hay que decirlo (el
+                  .env.example ya lo pide) y no
+                 usar datos reales.
+
+     M-           es_identificador_temporal          Generar TMP- con        Backend 1    Pendiente
+     06          acepta cualquier texto que          fecha y aleatorio, y
+                 empiece con TMP- y tenga 8 o        validar el formato
+                 más caracteres; no hay formato
+                 ni unicidad. Dos niños podrían
+                 compartir id (por lectura del
+                 código; no se probó con datos).
+
+
+
+
+  Cómo se verificó
+  Lo marcado como “probado” se ejecutó contra el código del paquete; lo marcado “por
+  lectura” solo se leyó.
+
+
+
+                                                                                              Page 10 of 11
+Reporte de errores e incongruencias: paquete SIGO
+
+
+
+
+         Copia de solo lectura. Se descomprimió el zip en una carpeta aparte y no se modificó
+         nada del original.
+         Pruebas del paquete. Se corrieron en modo aislado: 38 pasan.
+         Sondas propias. Un script contra la app en memoria revisó CORS, reutilización y
+         predicción de códigos, HTML en la exportación, mensaje de alergia con paciente
+         hombre, ids TMP- , listas de la enfermera, token de desarrollo y fuerza bruta.
+         Lectura. Políticas de rls.sql , openapi.yaml , mocks, LEEME, tareas del front y
+         prompt de visión.
+         No verificado. RLS contra un Postgres real, carga de URLs en WeasyPrint, Ollama y el
+         modelo de visión (aún no están conectados), y el comportamiento tras desplegar en
+         Vercel y el túnel.
+
+  Los dueños son una sugerencia según el reparto del LEEME; ajusten los nombres como
+  prefieran.
+
+
+
+
+                                                                                           Page 11 of 11
+

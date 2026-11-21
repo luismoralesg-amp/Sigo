@@ -1,0 +1,815 @@
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+  Sigo: flujo de usuario y contrato frontend–
+  backend
+     Nov 21, 2026 · ​@Phil
+
+
+
+  Resumen
+  Usamos el flujo de backend: la enfermera digitaliza, la paciente ve y comparte su historial
+  con un código temporal, y el médico lo consulta solo mientras ese código esté vigente. El
+  MVP son 12 pantallas y 18 endpoints, y el backend entrega primero respuestas de prueba
+  con la forma final para que el frontend no se quede esperando.
+
+          Qué es: una web app que se abre con un link en el celular o la computadora y se puede
+          guardar como ícono. Funciona en celulares viejos y toma fotos aunque no haya señal.
+          Stack: frontend en Next.js (PWA); backend en FastAPI con control de roles; Supabase
+          para la base de datos, las fotos y el login del personal; IA de visión para leer las fichas;
+          CAG local para las preguntas y los resúmenes.
+          Tres roles: enfermera digitaliza y corrige; paciente solo ve, descarga y comparte
+          (no edita ni borra); medico solo lee, con el código que le da la paciente o, en una
+          emergencia, con un acceso limitado a alergias y condiciones crónicas.
+          Nada se borra: corregir crea una versión nueva, y la foto o el archivo original queda
+          guardado junto al dato.
+          Extra: importar un Excel o Access viejo.
+          Convenciones: JSON; campos en español y snake_case ; fechas YYYY-MM-DD ; fecha y
+          hora en ISO 8601 con zona -06:00 ; todo bajo /api/v1 .
+
+
+
+
+                                                                                                 Page 1 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+  Flujo del usuario
+
+
+
+
+  flujo del usuario · enfermera, paciente y médico
+
+
+
+
+                                                     Page 2 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+  La paciente es la que da el permiso: el médico solo ve el expediente con el código que ella
+  genera, y el acceso se cierra solo. Si la paciente no tiene smartphone, la enfermera genera
+  el código o se lo manda por SMS; si llega inconsciente, el médico abre un acceso de
+  emergencia que solo muestra alergias y condiciones crónicas. La enfermera nunca borra;
+  cada corrección es una versión nueva. Si no hay señal al escanear, la foto espera en el
+  celular y sigue el mismo camino cuando vuelve la conexión.
+
+
+  Pantallas y rutas
+  Son 12 pantallas: 5 de la enfermera, 5 de la paciente y 2 del médico. El personal entra por
+  /login y la paciente por /mi/entrar , con su DPI y su PIN.
+
+
+     Ruta                                            Pantalla              Rol          Endpoints que usa
+
+      /login                                         Inicio de sesión      enfermera,   Supabase Auth, GET /me
+                                                     del personal          médico
+
+      /puesto                                        Buscar paciente       enfermera    GET /pacientes/buscar , POST
+                                                     por DPI; si no                     /pacientes
+                                                     existe, formulario
+                                                     para crearlo y
+                                                     mostrar su PIN
+                                                     inicial
+
+      /puesto/pacientes/[id]                         Paciente: sus         enfermera    GET
+                                                     consultas,                         /pacientes/{id}/expediente ,
+                                                     botones                            POST
+                                                     “Escanear ficha”,                  /consultas/{id}/versiones ,
+                                                     “Corregir” en cada                 POST
+                                                     dato y “Generar                    /pacientes/{id}/versiones ,
+                                                     código” para la                    POST
+                                                     paciente sin                       /pacientes/{id}/codigos
+                                                     smartphone
+
+      /puesto/pacientes/[id]/captura                 Cámara: una o         enfermera    POST /pacientes/{id}/fichas
+                                                     varias páginas                     (o la cola local si no hay señal)
+
+      /puesto/fichas/[id]                            Revisión: foto a la   enfermera    GET /fichas/{id} , POST
+                                                     izquierda, campos                  /fichas/{id}/confirmar
+                                                     a la derecha,
+                                                     dudosos en
+                                                     amarillo,
+                                                     consentimiento,
+                                                     confirmar
+
+
+
+
+                                                                                                                       Page 3 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+     Ruta                                            Pantalla              Rol        Endpoints que usa
+
+      /mi/entrar                                     Entrar con DPI y      paciente   POST /auth/paciente
+                                                     PIN
+
+      /mi/pin                                        Cambiar el PIN;       paciente   PUT /me/pin
+                                                     obligatorio la
+                                                     primera vez que
+                                                     entra
+
+      /mi                                            Mi historial:         paciente   GET
+                                                     alergias arriba,                 /pacientes/{id}/expediente ,
+                                                     línea de tiempo,                 GET
+                                                     botón “Descargar”                /pacientes/{id}/exportar
+                                                     con los formatos
+
+      /mi/compartir                                  Código y QR           paciente   POST
+                                                     temporal, con                    /pacientes/{id}/codigos
+                                                     cuenta regresiva y
+                                                     opción de
+                                                     mandarlo por SMS
+
+      /mi/accesos                                    Quién vio mi          paciente   GET /pacientes/{id}/accesos
+                                                     historial y cuándo;
+                                                     las emergencias
+                                                     en rojo
+
+      /hospital                                      Escribir el código    médico     POST /codigos/canjear , POST
+                                                     o escanear el QR;                /emergencia
+                                                     botón “Acceso de
+                                                     emergencia” que
+                                                     pide DPI y motivo
+
+      /hospital/pacientes/[id]                       Expediente: alerta    médico     GET
+                                                     de alergias, línea               /pacientes/{id}/expediente ,
+                                                     de tiempo,                       GET
+                                                     versiones,                       /consultas/{id}/versiones ,
+                                                     asistente, tiempo                POST
+                                                     que le queda al                  /pacientes/{id}/preguntar
+                                                     acceso. En
+                                                     emergencia, solo
+                                                     las alertas y una
+                                                     banda roja
+
+
+  Cada pantalla con datos tiene cuatro estados que el frontend dibuja: cargando, vacío,
+  error y sin señal. Las del médico tienen un quinto: “el acceso venció”, que lo regresa a
+   /hospital .
+
+
+
+
+                                                                                                                 Page 4 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+  Modelos de datos
+  Estos tipos son el contrato: el backend responde con esta forma exacta y el frontend la
+  usa tal cual. Una ficha en papel puede traer varias consultas de distintos años, así que la
+  extracción devuelve una lista. Cada consulta y los datos del paciente tienen número de
+  versión, porque corregir nunca borra.
+
+     // Un dato leído por la IA. "baja" = se pinta en amarillo y la enfermera lo
+     revisa primero.
+     type Campo<T> = { valor: T | null; confianza: "alta" | "baja" };
+
+
+     type Rol = "enfermera" | "medico" | "paciente";
+
+     type Centro = {
+        id: string;
+        nombre: string;              // "Puesto de Salud Aldea Chuicacá"
+        tipo: "puesto" | "centro" | "hospital";
+        municipio: string;
+        departamento: string;
+     };
+
+
+     // Para paciente, centro = null y paciente_id = su id.
+     type Usuario = { id: string; nombre: string; rol: Rol; centro: Centro | null;
+     paciente_id: string | null; debe_cambiar_pin: boolean };
+
+
+     // Lo que la IA leyó de las fotos, antes de que una persona confirme.
+     type Extraccion = {
+       paciente: {
+         nombre: Campo<string>;
+         dpi: Campo<string>;                 // 13 dígitos, sin espacios
+         fecha_nacimiento: Campo<string>;    // YYYY-MM-DD
+         sexo: Campo<"F" | "M">;
+         comunidad: Campo<string>;
+         alergias: Campo<string[]>;
+         condiciones_cronicas: Campo<string[]>;
+       };
+       consultas: Array<{
+         fecha: Campo<string>;
+         motivo: Campo<string>;
+         diagnostico: Campo<string>;
+         tratamiento: Campo<string>;
+         vacunas: Campo<string[]>;
+         pagina: number;                     // en qué foto está (0, 1, 2...)
+
+
+
+                                                                                          Page 5 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+          }>;
+     };
+
+
+     type Ficha = {
+        id: string;
+        paciente_id: string;                  // la ficha nace ya ligada al
+     paciente buscado o creado
+        client_id: string;                    // lo genera el celular; sirve para
+     no duplicar
+        estado: "procesando" | "lista" | "confirmada" | "error";
+        imagenes: string[];                   // URLs firmadas, válidas al menos 1
+     hora
+        extraccion: Extraccion | null;        // null mientras estado =
+     "procesando"
+        error: string | null;
+        creada_en: string;
+     };
+
+
+     type Paciente = {
+        id: string;
+        dpi: string;
+        nombre: string;
+        fecha_nacimiento: string | null;
+        sexo: "F" | "M" | null;
+        comunidad: string | null;
+        alergias: string[];
+        condiciones_cronicas: string[];
+        version: number;                             // sube con cada corrección
+     };
+
+
+     type Consulta = {
+       id: string;
+       version: number;                              // 1 al confirmar; 2, 3... con cada
+     corrección
+       fecha: string | null;
+       centro: Centro;
+       motivo: string | null;
+       diagnostico: string | null;
+       tratamiento: string | null;
+       vacunas: string[];
+       original_url: string;                         // la foto o el archivo de donde
+     salió
+       editada_por: string;                          // nombre de quien confirmó o
+
+
+
+                                                                                        Page 6 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+     corrigió por última vez
+          editada_en: string;
+     };
+
+
+     type Version = {
+          version: number;
+          datos: Omit<Consulta, "id" | "version" | "editada_por" | "editada_en">;
+          motivo_cambio: string | null;              // null en la versión 1
+          editada_por: string;
+          editada_en: string;
+     };
+
+
+     type Expediente = {
+          paciente: Paciente;
+          alertas: { alergias: string[]; condiciones_cronicas: string[];
+     medicamentos: string[] };
+       consultas: Consulta[];                        // solo la versión vigente, de la más
+     reciente a la más antigua
+       acceso_vence_en: string | null;               // solo para el médico; null para
+     paciente y enfermera
+       tipo_acceso: "codigo" | "emergencia" | null; // emergencia: solo paciente y
+     alertas, consultas = []
+     };
+
+
+     type CodigoTemporal = {
+          codigo: string;                            // corto, para dictar: "K7P-4Q2"
+          qr: string;                                // texto que el frontend convierte en
+     QR
+          vence_en: string;                          // hasta cuándo se puede canjear (10
+     minutos)
+       enviado_por_sms: boolean;
+     };
+
+
+     type Acceso = {
+       quien: string;                                // médico o enfermera
+          tipo: "codigo" | "emergencia" | "enfermera";
+          motivo: string | null;                // obligatorio en emergencia
+          centro: string;
+          desde: string;
+          hasta: string;
+          preguntas_hechas: number;
+
+
+
+
+                                                                                         Page 7 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+     };
+
+
+     type Fuente = { consulta_id: string; version: number; original_url: string;
+     campo: string };
+
+
+
+
+  Contrato de API
+  Todas las rutas van bajo /api/v1 , reciben y devuelven JSON (salvo la subida de fotos y
+  las descargas) y piden Authorization: Bearer <token> . El personal usa el token de
+  Supabase y la paciente el que le da POST /auth/paciente . El backend saca el rol del
+  token y revisa los permisos; el frontend nunca manda el rol.
+
+
+     #             Método y ruta                     Quién       Para qué
+
+     1              GET /me                          todos       Quién soy, mi rol y si debo
+                                                                 cambiar el PIN
+
+     2              POST /auth/paciente              público     Paciente entra con DPI y
+                                                                 PIN
+
+     3              GET /pacientes/buscar?dpi=       enfermera   Buscar por DPI
+
+     4              POST /pacientes                  enfermera   Crear paciente nuevo y su
+                                                                 PIN inicial
+
+     5              POST /pacientes/{id}/fichas      enfermera   Subir las fotos de una
+                                                                 ficha
+
+     6              GET /fichas/{id}                 enfermera   Estado y extracción de la
+                                                                 ficha
+
+     7              POST /fichas/{id}/confirmar      enfermera   Guardar como versión 1
+
+     8              POST                             enfermera   Corregir una consulta
+                   /consultas/{id}/versiones
+
+     9              POST                             enfermera   Corregir datos o alergias
+                   /pacientes/{id}/versiones
+
+     10             GET                              paciente,   Ver el expediente
+                   /pacientes/{id}/expediente        médico,
+                                                     enfermera
+
+
+
+
+                                                                                          Page 8 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+     #             Método y ruta                     Quién          Para qué
+
+     11             GET /consultas/{id}/versiones    paciente,      Historial de cambios de
+                                                     médico,        una consulta
+                                                     enfermera
+
+     12             GET /pacientes/{id}/exportar?    paciente       Descargar el historial
+                   formato=
+
+     13             POST /pacientes/{id}/codigos     paciente,      Generar código o QR
+                                                     enfermera      temporal, y mandarlo por
+                                                                    SMS
+
+     14             POST /codigos/canjear            médico         Abrir el acceso con el
+                                                                    código
+
+     15             POST                             médico         Preguntar al asistente
+                   /pacientes/{id}/preguntar
+
+     16             GET /pacientes/{id}/accesos      paciente       Bitácora: quién vio y
+                                                                    cuándo
+
+     17             PUT /me/pin                      paciente       Cambiar el PIN
+
+     18             POST /emergencia                 médico         Acceso de emergencia:
+                                                                    solo alertas
+
+     extra          POST /importaciones              enfermera      Subir un Excel o Access
+                                                                    viejo
+
+
+
+  Entrar
+  1. GET /me → Usuario .
+
+     { "id": "u_01", "nombre": "Ana Tzul", "rol": "enfermera", "paciente_id":
+     null,
+       "centro": { "id": "c_01", "nombre": "Puesto de Salud Aldea Chuicacá",
+     "tipo": "puesto",
+                   "municipio": "Totonicapán", "departamento": "Totonicapán" } }
+
+
+  2. POST /auth/paciente con { "dpi": "2547896310801", "pin": "4821" } → {
+  "token": "…", "vence_en": "2026-11-21T12:42:00-06:00", "paciente_id": "p_12"
+  } . Después de 5 intentos fallidos responde 429 por 15 minutos.
+
+
+
+
+                                                                                             Page 9 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+  17. PUT /me/pin con { "pin_actual": "4821", "pin_nuevo": "9034" } → 204 . El PIN
+  nuevo tiene de 4 a 6 dígitos. Mientras GET /me diga debe_cambiar_pin: true , el
+  frontend manda a /mi/pin antes que a cualquier otra pantalla.
+
+
+  Enfermera
+  3. GET /pacientes/buscar?dpi=2547896310801 → { "pacientes": [Paciente] } , o {
+  "pacientes": [] } si no existe. Devuelve 200 con lista vacía, no 404 .
+
+  4. POST /pacientes con { "dpi", "nombre", "fecha_nacimiento", "sexo",
+  "comunidad", "telefono" } → 201 con { "paciente": Paciente, "pin_inicial":
+  "4821" } . El PIN se muestra una sola vez para que la enfermera se lo dé a la paciente. Si el
+  DPI ya existe, responde 409 .
+
+  5. POST /pacientes/{id}/fichas , en multipart/form-data :
+
+           client_id : UUID que genera el celular al tomar la foto. Si llega dos veces, el backend
+          devuelve la ficha que ya existe con 200 .
+           imagenes : uno o más JPEG en orden de página, reducidos por el frontend a 1600 px
+          de lado y menos de 1.5 MB cada uno.
+           capturada_en : fecha y hora de la foto (puede ser horas antes si estuvo sin señal).
+
+  Responde 202 con la ficha en procesando . Si la IA es rápida, puede responder directo
+  con lista y la extracción; el frontend acepta las dos.
+
+  6. GET /fichas/{id} → Ficha . El frontend la consulta cada 2 segundos, hasta 60
+  segundos, mientras esté en procesando .
+
+     { "id": "f_88", "paciente_id": "p_12", "client_id": "7c1e…", "estado":
+     "lista",
+         "imagenes": ["https://…/f_88_0.jpg"],
+         "extraccion": {
+              "paciente": {
+                "nombre": { "valor": "Rosa Batz Tzoc", "confianza": "alta" },
+                  "dpi": { "valor": "2547896310801", "confianza": "alta" },
+                  "fecha_nacimiento": { "valor": "1984-03-12", "confianza": "alta" },
+                  "sexo": { "valor": "F", "confianza": "alta" },
+                  "comunidad": { "valor": "Chuicacá", "confianza": "alta" },
+                  "alergias": { "valor": ["penicilina"], "confianza": "alta" },
+                  "condiciones_cronicas": { "valor": [], "confianza": "alta" }
+              },
+              "consultas": [
+
+
+
+
+                                                                                             Page 10 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+                  { "fecha": { "valor": "2025-08-14", "confianza": "alta" },
+                    "motivo": { "valor": "Control prenatal", "confianza": "alta" },
+                      "diagnostico": { "valor": "Embarazo 24 semanas", "confianza": "baja"
+     },
+                      "tratamiento": { "valor": "Sulfato ferroso", "confianza": "alta" },
+                      "vacunas": { "valor": ["Td"], "confianza": "alta" },
+                      "pagina": 0 }
+              ]
+          },
+          "error": null, "creada_en": "2026-11-21T10:42:00-06:00" }
+
+
+  Si el DPI que leyó la IA no coincide con el del paciente de la ficha, el frontend lo marca en
+  rojo antes de confirmar.
+
+  7. POST /fichas/{id}/confirmar con los datos ya corregidos, sin confianza :
+
+     { "paciente": { "alergias": ["penicilina"], "condiciones_cronicas": [] },
+       "consultas": [ { "fecha": "2025-08-14", "motivo": "Control prenatal",
+     "diagnostico": "Embarazo 24 semanas",
+                                             "tratamiento": "Sulfato ferroso", "vacunas": ["Td"],
+     "pagina": 0 } ],
+          "consentimiento": true }
+
+
+  Responde 201 con { "consultas_creadas": 1, "version": 1 } . Si consentimiento
+  no es true , responde 400 ; si la ficha ya estaba confirmada, 409 .
+
+  8. POST /consultas/{id}/versiones con los campos corregidos y "motivo_cambio":
+  "Fecha mal leída" → 201 con la Consulta en su nueva versión. La versión anterior se
+  queda guardada.
+
+  9. POST /pacientes/{id}/versiones : igual, para nombre, alergias o condiciones
+  crónicas. El DPI no se puede corregir aquí (ver decisiones).
+
+
+  Expediente
+  10. GET /pacientes/{id}/expediente → Expediente . Para el médico, el backend revisa
+  que tenga un acceso vigente para ese paciente y registra la consulta en la bitácora; el
+  frontend no manda nada extra. Con acceso de emergencia devuelve solo los datos del
+  paciente y las alertas, con la lista de consultas vacía. Sin acceso vigente responde 403
+  con acceso_vencido .
+
+  11. GET /consultas/{id}/versiones → { "versiones": Version[] } , de la más nueva a
+  la más vieja.
+
+
+
+                                                                                                    Page 11 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+  Paciente
+  12. GET /pacientes/{id}/exportar?formato=pdf → el archivo, con Content-
+  Disposition: attachment . Formatos: pdf , docx , xlsx , txt , md y html . Para el demo
+  basta pdf ; los demás, si da tiempo.
+
+  13. POST /pacientes/{id}/codigos → 201 con un CodigoTemporal :
+
+     { "codigo": "K7P-4Q2", "qr": "https://sigo.app/c/K7P-4Q2", "vence_en": "2026-
+     11-21T10:52:00-06:00", "enviado_por_sms": false }
+
+
+  Cada código sirve una sola vez y se puede canjear durante 10 minutos; el acceso que abre
+  dura 2 horas. Lo puede pedir la paciente desde su celular, o la enfermera desde el puesto a
+  pedido de la paciente (queda en la bitácora). Con { "enviar_sms": true } el backend
+  también lo manda por SMS al teléfono registrado, para quien solo tiene un celular básico.
+  En modo demo, el acceso dura 2 minutos.
+
+  16. GET /pacientes/{id}/accesos → { "accesos": Acceso[] } , el más reciente
+  primero.
+
+
+  Médico
+  14. POST /codigos/canjear con { "codigo": "K7P-4Q2" } → { "paciente_id":
+  "p_12", "acceso_vence_en": "2026-11-21T12:45:00-06:00" } . Si el código venció
+  responde 410 ; si ya se usó, 409 .
+
+  15. POST /pacientes/{id}/preguntar con { "pregunta": "¿Cuándo fue su última
+  vacuna?" } → { "respuesta": "…", "fuentes": Fuente[] } . Si no hay fuente, la
+  respuesta dice que no lo encontró; nunca inventa. Pide acceso vigente, igual que el
+  expediente.
+
+  18. POST /emergencia con { "dpi": "2547896310801", "motivo": "Llega
+  inconsciente a emergencias" } → { "paciente_id": "p_12", "acceso_vence_en":
+  "2026-11-21T11:45:00-06:00", "tipo_acceso": "emergencia" } . El motivo es
+  obligatorio, con al menos 10 caracteres. El acceso dura 1 hora y solo deja ver los datos del
+  paciente y las alertas; versiones, asistente y descargas responden 403 con
+   solo_emergencia . Queda en la bitácora de la paciente marcado como emergencia, con el
+  motivo.
+
+
+
+
+                                                                                          Page 12 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+  Extra
+   POST /importaciones con un .xlsx , .csv o .accdb y el paciente_id , o una columna
+  de DPI → crea fichas en lista , que se revisan y confirman igual que las fotos.
+
+
+  Errores y reglas
+  Todos los errores tienen la misma forma, para que el frontend muestre el mensaje tal cual:
+   { "error": { "codigo": "codigo_vencido", "mensaje": "Este código ya venció.
+  Pide uno nuevo a la paciente." } } .
+
+
+     HTTP            codigo                          Cuándo                     Qué hace el frontend
+
+     400             validacion , dpi_invalido ,     Falta un dato o está mal   Marca el campo en rojo
+                     sin_consentimiento                                         con el mensaje
+
+     401             sin_sesion                      Token vencido o            Manda a /login o a
+                                                     ausente                    /mi/entrar
+
+     401             pin_incorrecto                  DPI o PIN no coinciden     “DPI o PIN incorrectos”,
+                                                                                sin decir cuál
+
+     403             rol_no_permitido                El rol no puede hacer      Pantalla “No tienes
+                                                     eso (paciente que          acceso”
+                                                     intenta editar)
+
+     403             acceso_vencido                  El médico ya no tiene      Regresa a /hospital :
+                                                     acceso vigente             “Pide un código nuevo”
+
+     404             no_existe                       Ficha, consulta o          Pantalla “No
+                                                     paciente no existe         encontrado”
+
+     409             dpi_ya_existe                   Se crea un paciente        Abre el paciente que ya
+                                                     con un DPI repetido        existe
+
+     409             ficha_ya_confirmada             Se confirma dos veces      Va directo al paciente
+
+     409             codigo_ya_usado                 El código ya se canjeó     “Este código ya se usó”
+
+     410             codigo_vencido                  El código pasó su          “Pide un código nuevo”
+                                                     vence_en
+
+     413             imagen_muy_grande               Una foto pasa de 5 MB      Vuelve a comprimir y
+                                                                                reintenta
+
+
+
+
+                                                                                                      Page 13 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+     HTTP            codigo                          Cuándo                    Qué hace el frontend
+
+     422             ilegible                        La IA no pudo leer nada   “Toma la foto otra vez,
+                                                                               con más luz”
+
+     429             demasiados_intentos             5 PIN fallidos seguidos   “Espera 15 minutos”
+
+     503             ia_no_disponible                La IA o el asistente      Deja la ficha en cola, o
+                                                     fallaron                  “Intenta de nuevo” en el
+                                                                               asistente
+
+     403             solo_emergencia                 Con acceso de             “Para ver más, pide el
+                                                     emergencia, el médico     código a la paciente”
+                                                     pide versiones, el
+                                                     asistente o una
+                                                     descarga
+
+
+  Reglas que ambos lados tienen que respetar:
+
+      1. Nada se borra. No hay DELETE en la API. Corregir crea una versión nueva y la anterior
+          queda en GET /consultas/{id}/versiones .
+      2. La IA nunca guarda sola. Nada entra al expediente sin POST
+          /fichas/{id}/confirmar . Lo que la IA no lee va con valor: null y confianza:
+          "baja" ; jamás un valor inventado.
+      3. El médico entra con código o por emergencia. Sin un acceso vigente, todo lo del
+         paciente responde 403 . El acceso se cierra solo al llegar a acceso_vence_en , y el
+          frontend muestra cuánto le queda. El acceso de emergencia pide un motivo, dura 1
+          hora y solo muestra alertas.
+      4. La paciente solo ve, descarga y comparte. Cualquier escritura con su token responde
+         403 .
+      5. Sin señal no se pierde nada. El frontend guarda la foto y el client_id en el celular y
+          reintenta al volver la señal; un client_id repetido devuelve la ficha existente.
+      6. El DPI tiene 13 dígitos. El frontend lo valida al escribirlo y el backend lo vuelve a
+         validar.
+      7. La bitácora es del backend. Canjear un código, abrir el expediente y cada pregunta al
+         asistente quedan registrados sin que el frontend haga nada.
+      8. El PIN nunca viaja de vuelta. Solo se muestra una vez, en la respuesta de POST
+          /pacientes , y el backend lo guarda cifrado. La paciente lo cambia la primera vez que
+          entra.
+
+
+
+                                                                                                   Page 14 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+      9. Datos inventados. En el hackathon no se usa ningún paciente real.
+
+
+  Lo que necesito del backend
+  Lo primero que necesito no es la IA: son los datos de acceso, los tres usuarios de prueba y
+  respuestas de prueba con la forma final. Con eso armo las 11 pantallas mientras ustedes
+  conectan la lectura real y el asistente.
+
+  Hora 0 a 2: para poder empezar
+
+          URL base del backend (local y desplegado) y CORS abierto para localhost:3000 y el
+          dominio de Vercel
+          URL del proyecto de Supabase y su clave pública ( anon key )
+          Una enfermera (Puesto de Salud Aldea Chuicacá) y un médico (Hospital Regional de
+          Quetzaltenango) de prueba
+          Doña Rosa como paciente de prueba, con su DPI y su PIN, 3 consultas viejas y alergia a
+          penicilina
+           GET /me y POST /auth/paciente funcionando
+
+  Hora 2 a 7: enfermera
+
+           GET /pacientes/buscar y POST /pacientes
+           POST /pacientes/{id}/fichas y GET /fichas/{id} devolviendo la extracción fija
+          del ejemplo, aunque todavía no llamen a la IA
+          Después, la extracción real con la misma forma, con al menos un campo en
+           confianza: "baja"
+           POST /fichas/{id}/confirmar
+
+  Hora 7 a 12: paciente y médico
+
+           GET /pacientes/{id}/expediente para los tres roles
+
+           POST /pacientes/{id}/codigos y POST /codigos/canjear , con códigos que
+          venzan de verdad (10 minutos para canjear y 2 horas de acceso), que también pueda
+          pedir la enfermera y que se puedan mandar por SMS
+           GET /pacientes/{id}/exportar?formato=pdf
+
+  Hora 12 a 15: versiones, bitácora y asistente
+
+           POST /consultas/{id}/versiones , POST /pacientes/{id}/versiones y GET
+          /consultas/{id}/versiones
+
+
+
+
+                                                                                          Page 15 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+           GET /pacientes/{id}/accesos con el registro automático y la marca de emergencia
+           POST /pacientes/{id}/preguntar con fuentes reales
+          Respuestas 403 reales por rol y por acceso vencido
+           PUT /me/pin y debe_cambiar_pin en GET /me
+
+           POST /emergencia , que deje ver solo las alertas durante 1 hora
+
+  Para el demo: un modo en que el acceso venza en 2 minutos en vez del tiempo normal,
+  para mostrar en vivo que se cierra solo.
+
+  De mi lado entrego: la app en Vercel, los tipos de la sección de modelos en un archivo
+  types.ts compartido, la cola sin señal y las 4 fichas de prueba fotografiadas para que las
+  usen al probar la IA.
+
+
+  Decisiones tomadas
+  Acordamos estas siete para empezar. Si alguna cambia después, se actualiza aquí y en el
+  contrato.
+
+
+     Tema                                            Decisión
+
+     Emergencias                                     Acceso de emergencia del médico con DPI y
+                                                     motivo obligatorio. Solo muestra alergias y
+                                                     condiciones crónicas, dura 1 hora y queda en rojo
+                                                     en la bitácora de la paciente ( POST /emergencia ).
+
+     Paciente sin smartphone                         La enfermera puede generar el código desde el
+                                                     puesto, a pedido de la paciente, y el código también
+                                                     se puede mandar por SMS ( POST
+                                                     /pacientes/{id}/codigos con enviar_sms ).
+
+     Duración del código y del acceso                El código se canjea en 10 minutos y el acceso dura 2
+                                                     horas. En modo demo, el acceso dura 2 minutos.
+
+     PIN                                             El backend lo genera al crear al paciente, la
+                                                     enfermera se lo entrega y la paciente lo cambia la
+                                                     primera vez que entra ( PUT /me/pin ).
+
+     Lo que ve la enfermera                          Todo el expediente, para poder corregir; su lectura
+                                                     también queda en la bitácora.
+
+     DPI mal escrito                                 No se corrige desde la app. En el demo se evita; en
+                                                     el piloto lo hace un supervisor.
+
+
+
+                                                                                                            Page 16 of 17
+Sigo: flujo de usuario y contrato frontend–backend
+
+
+
+
+     Tema                                            Decisión
+
+     Lectura con IA                                  POST /pacientes/{id}/fichas responde 202 y
+                                                     el frontend pregunta cada 2 segundos.
+
+
+
+
+                                                                                                  Page 17 of 17
+

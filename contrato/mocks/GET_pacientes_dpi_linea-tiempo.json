@@ -1,0 +1,40 @@
+{
+  "dpi": "2483175631406",
+  "eventos": [
+    {
+      "fecha": "2024-11-02",
+      "tipo": "consulta",
+      "titulo": "Faringitis bacteriana",
+      "detalle": "Puesto de Salud Chichicastenango. Recetaron amoxicilina.",
+      "id_referencia": "con-002"
+    },
+    {
+      "fecha": "2023-09-01",
+      "tipo": "vacuna",
+      "titulo": "COVID-19 (refuerzo)",
+      "detalle": "3a dosis",
+      "id_referencia": "vac-002"
+    },
+    {
+      "fecha": "2023-04-21",
+      "tipo": "consulta",
+      "titulo": "Control de presión",
+      "detalle": "Hipertensión controlada. Losartán 50 mg.",
+      "id_referencia": "con-001"
+    },
+    {
+      "fecha": "2022-05-10",
+      "tipo": "vacuna",
+      "titulo": "Tétanos (Td)",
+      "detalle": "refuerzo",
+      "id_referencia": "vac-001"
+    },
+    {
+      "fecha": "2005-07-18",
+      "tipo": "alergia",
+      "titulo": "Alergia a penicilina",
+      "detalle": "Reacción grave: urticaria y dificultad para respirar.",
+      "id_referencia": "alg-001"
+    }
+  ]
+}
