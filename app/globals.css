@@ -72,6 +72,7 @@
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-mono: var(--font-plex-mono), ui-monospace, Menlo, monospace;
+  --font-mano: var(--font-caveat), "Bradley Hand", cursive;
 
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -92,13 +93,13 @@ html {
 body {
   background: var(--papel);
   color: var(--tinta);
-  font-family: var(--font-sans);
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, .font-serif {
-  font-family: var(--font-serif);
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
   font-optical-sizing: auto;
   letter-spacing: -0.01em;
 }
@@ -115,6 +116,7 @@ h1, h2, h3, .font-serif {
 
 ::selection { background: #cfe5e2; color: var(--tinta); }
 
+@layer components {
 /* ---------- Superficies "del pasado" ---------- */
 .papel-kraft {
   background-color: var(--kraft-claro);
@@ -142,9 +144,11 @@ h1, h2, h3, .font-serif {
 
 /* tabla vieja tipo Excel / Access */
 .tabla-vieja {
-  font-family: var(--font-mono);
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
   background-image: var(--grano),
     repeating-linear-gradient(180deg, transparent 0 35px, rgba(94, 74, 43, 0.08) 35px 36px);
+}
+
 }
 
 /* línea de escaneo */
