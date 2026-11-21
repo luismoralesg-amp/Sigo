@@ -7,6 +7,7 @@ import { Tarjeta } from "@/components/ui/card";
 import { Insignia } from "@/components/ui/badge";
 import { CONTADORES_PUESTO, RECIENTES_PUESTO, USUARIOS } from "@/datos/demo";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Inicio del puesto" };
 
 function saludo() {

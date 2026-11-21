@@ -18,6 +18,7 @@ type Paso = "captura" | "leyendo" | "revision" | "listo";
  * Lectura simulada para la versión de interfaz: devuelve la ficha de Rosa ya procesada.
  * Al conectar el backend se reemplaza por POST /api/leer-ficha con las fotos.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- las fotos se enviarán al conectar el backend
 async function leer(_fotos: Foto[]): Promise<LecturaFicha> {
   await new Promise((r) => setTimeout(r, 3600));
   return structuredClone(LECTURA_RESPALDO_ROSA);

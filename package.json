@@ -1,5 +1,5 @@
 {
-  "name": "expediente-vivo",
+  "name": "sigo",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,10 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "tsx --test tests/*.test.ts",
-    "db:setup": "tsx scripts/setup.ts",
-    "demo:reset": "tsx scripts/setup.ts --solo-datos",
     "fichas:generar": "tsx scripts/generar-fichas.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "csv:generar": "tsx scripts/generar-csv.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.12.0",

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronRight, History } from "lucide-react";
 import { formatearDPI, momentoBitacora } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Buscar expediente" };
 
 export default function PaginaHospital() {

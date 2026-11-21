@@ -27,7 +27,7 @@ export function Captura({ fotos, setFotos, onLeer }: { fotos: Foto[]; setFotos: 
           continue;
         }
         // Comprimir en el celular: se sube más rápido con poca señal
-        const comprimida = await imageCompression(f, { maxWidthOrHeight: 1800, maxSizeMB: 0.8, useWebWorker: true, fileType: "image/jpeg" });
+        const comprimida = await imageCompression(f, { maxWidthOrHeight: 1800, maxSizeMB: 0.8, useWebWorker: false, fileType: "image/jpeg" });
         nuevas.push({ id: crypto.randomUUID(), url: URL.createObjectURL(comprimida), archivo: new File([comprimida], f.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }) });
       }
       setFotos([...fotos, ...nuevas]);
