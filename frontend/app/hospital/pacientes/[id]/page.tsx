@@ -7,8 +7,9 @@
  * regresa a /hospital, donde se le pide un código nuevo.
  */
 import { use, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, LoaderCircle, MessageCircleQuestion, Send, Siren, Timer } from "lucide-react";
+import { ArrowLeft, FileText, LoaderCircle, MessageCircleQuestion, Send, Siren, Timer } from "lucide-react";
 import type { Expediente, Fuente } from "@/lib/types";
 import { Shell } from "@/components/shell";
 import { Boton } from "@/components/ui/button";
@@ -67,6 +68,9 @@ function Expedientes({ e }: { e: Expediente }) {
 
   return (
     <Shell ancho="amplio" banda={banda}>
+      <Link href="/hospital" className="-ml-2 mb-3 inline-flex min-h-12 items-center gap-1.5 rounded-[10px] px-2 font-semibold text-tinta-suave hover:text-tinta">
+        <ArrowLeft className="h-5 w-5" aria-hidden="true" /> Abrir otro expediente
+      </Link>
       <CabeceraPaciente paciente={e.paciente}>
         {!emergencia && tiempo && <TiempoRestante tiempo={tiempo} poco={(restante ?? 0) < 60_000} />}
       </CabeceraPaciente>

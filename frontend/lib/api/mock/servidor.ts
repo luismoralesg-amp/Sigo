@@ -85,6 +85,15 @@ function cargar(): Estado {
   return estado;
 }
 
+function hayAlmacen(): boolean {
+  try {
+    localStorage.getItem(CLAVE);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function guardar() {
   try {
     localStorage.setItem(CLAVE, JSON.stringify(estado));
@@ -845,6 +854,9 @@ ruta("POST", "/importaciones", async (p) => {
 /** Atiende una petición como lo haría el backend. Agrega una latencia corta para que se vean los estados de carga. */
 export async function responder(p: Peticion): Promise<Response> {
   await new Promise((r) => setTimeout(r, 180 + Math.random() * 320));
+  // Cada petición vuelve a leer localStorage: otra pestaña (la paciente que generó un código)
+  // pudo haber cambiado el estado. Sin almacenamiento, se queda con el estado en memoria.
+  if (hayAlmacen()) estado = null;
   if (typeof navigator !== "undefined" && !navigator.onLine) throw new TypeError("sin señal");
   for (const [metodo, patron, fn] of RUTAS) {
     const m = patron.exec(p.ruta);
