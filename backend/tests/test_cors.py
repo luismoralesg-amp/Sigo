@@ -81,6 +81,18 @@ def test_origen_ajeno_no_pasa_el_preflight(cliente):
         assert "access-control-allow-origin" not in respuesta.headers
 
 
+def test_regex_vacio_apaga_el_tunel_en_produccion(monkeypatch):
+    monkeypatch.setenv("SIGO_CORS_ORIGINS", "http://localhost:3000,https://sigo.vercel.app")
+    monkeypatch.setenv("SIGO_CORS_ORIGIN_REGEX", "")
+    config.cache_clear()
+    assert Config(_env_file=None).sigo_cors_origin_regex == ""
+    cliente = TestClient(crear_app())
+    tunel = _opciones(cliente, "https://abc.trycloudflare.com")
+    assert tunel.status_code == 400
+    assert "access-control-allow-origin" not in tunel.headers
+    _preflight_ok(_opciones(cliente, "https://sigo.vercel.app"), "https://sigo.vercel.app")
+
+
 def test_cors_sale_del_entorno(monkeypatch):
     monkeypatch.setenv("SIGO_CORS_ORIGINS", "http://localhost:9999")
     monkeypatch.setenv("SIGO_CORS_ORIGIN_REGEX", r"^https://tunel-[a-z]+\.example$")

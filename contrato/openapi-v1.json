@@ -3362,6 +3362,16 @@
             }
           },
           {
+            "in": "query",
+            "name": "emergencia",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Emergencia",
+              "type": "boolean"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,

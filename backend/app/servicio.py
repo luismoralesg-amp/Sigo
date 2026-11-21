@@ -221,7 +221,17 @@ def autenticar_paciente(dpi: str, pin: str) -> dict:
     return {"token": token, "vence_en": tiempo.iso(vence), "paciente_id": paciente["id"]}
 
 
-def buscar(usuario: dict, dpi: str) -> dict:
+def _paciente_de_busqueda(paciente: dict, emergencia: bool) -> dict:
+    """Misma forma de Paciente. Fuera de emergencia las alertas van vacías."""
+    if emergencia:
+        return paciente
+    visible = dict(paciente)
+    visible["alergias"] = []
+    visible["condiciones_cronicas"] = []
+    return visible
+
+
+def buscar(usuario: dict, dpi: str, emergencia: bool = False) -> dict:
     if usuario["rol"] != "enfermera":
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
     texto = (dpi or "").strip()
@@ -234,9 +244,10 @@ def buscar(usuario: dict, dpi: str) -> dict:
 
         cui = normalizar_cui(texto)
         paciente = almacen.paciente_por_dpi(cui) if len(cui) == 13 else almacen.paciente_por_dpi(texto)
-    # Phil: 200 con el paciente si el DPI existe, o lista vacía si no. No se filtra por centro:
-    # vaciar la lista cuando sí existe contradice el contrato y el front intentaría crearlo (409).
-    return {"pacientes": [paciente] if paciente else []}
+    # Phil: 200 con el paciente si el DPI existe, o lista vacía si no. No es 403 ni 409.
+    if not paciente:
+        return {"pacientes": []}
+    return {"pacientes": [_paciente_de_busqueda(paciente, emergencia)]}
 
 
 def crear_paciente(usuario: dict, datos: dict) -> dict:

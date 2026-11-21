@@ -106,10 +106,13 @@ def test_otro_centro_no_lee_ni_exporta_y_el_alta_propia_si(cliente):
         )
         assert len(almacen.accesos) == antes
         assert any(e["tipo"] == "acceso_denegado" and e["actor_id"] == "u_03" for e in almacen.bitacora)
-        # Phil: buscar devuelve a Rosa si el DPI existe, aunque el expediente quede cerrado.
+        # Phil: buscar devuelve a Rosa si el DPI existe (200, no 403 ni 409).
+        # Fuera de emergencia las alertas van vacías.
         busca = cliente.get("/api/v1/pacientes/buscar", headers=auth(elena), params={"dpi": DPI_ROSA})
         assert busca.status_code == 200
         assert busca.json()["pacientes"][0]["id"] == "p_12"
+        assert busca.json()["pacientes"][0]["alergias"] == []
+        assert busca.json()["pacientes"][0]["condiciones_cronicas"] == []
         assert_error(
             cliente.get("/api/v1/consultas/con_001/versiones", headers=auth(elena)),
             403,
@@ -159,3 +162,52 @@ def test_otro_centro_no_lee_ni_exporta_y_el_alta_propia_si(cliente):
         )
     finally:
         PERSONAL.pop("u_03", None)
+
+
+CAMPOS_PACIENTE = {
+    "id",
+    "dpi",
+    "nombre",
+    "fecha_nacimiento",
+    "sexo",
+    "comunidad",
+    "alergias",
+    "condiciones_cronicas",
+    "version",
+}
+
+
+def test_buscar_mismo_centro_sin_emergencia_oculta_alertas(cliente):
+    ana = token_rol("enfermera")
+    almacen.pacientes["p_12"][-1]["condiciones_cronicas"] = ["hipertension"]
+    r = cliente.get("/api/v1/pacientes/buscar", headers=auth(ana), params={"dpi": DPI_ROSA})
+    assert r.status_code == 200, r.text
+    assert set(r.json()) == {"pacientes"}
+    paciente = r.json()["pacientes"][0]
+    assert set(paciente) == CAMPOS_PACIENTE
+    assert paciente["id"] == "p_12"
+    assert paciente["nombre"] == "Rosa Batz Tzoc"
+    assert paciente["alergias"] == []
+    assert paciente["condiciones_cronicas"] == []
+    expediente = cliente.get("/api/v1/pacientes/p_12/expediente", headers=auth(ana))
+    assert expediente.status_code == 200, expediente.text
+    assert expediente.json()["paciente"]["alergias"] == ["penicilina"]
+    assert expediente.json()["paciente"]["condiciones_cronicas"] == ["hipertension"]
+    assert expediente.json()["alertas"]["alergias"] == ["penicilina"]
+
+
+def test_buscar_mismo_centro_en_emergencia_muestra_alertas(cliente):
+    ana = token_rol("enfermera")
+    almacen.pacientes["p_12"][-1]["condiciones_cronicas"] = ["hipertension"]
+    r = cliente.get(
+        "/api/v1/pacientes/buscar",
+        headers=auth(ana),
+        params={"dpi": DPI_ROSA, "emergencia": "true"},
+    )
+    assert r.status_code == 200, r.text
+    assert set(r.json()) == {"pacientes"}
+    paciente = r.json()["pacientes"][0]
+    assert set(paciente) == CAMPOS_PACIENTE
+    assert paciente["id"] == "p_12"
+    assert paciente["alergias"] == ["penicilina"]
+    assert paciente["condiciones_cronicas"] == ["hipertension"]

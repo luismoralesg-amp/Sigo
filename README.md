@@ -26,7 +26,7 @@ Queda en `contrato/openapi-v1.json`. `contrato/openapi.yaml` es la v0 obsoleta y
 
 ### Túnel de Cloudflare (PC de Luis)
 
-El navegador del frontend manda `Origin` desde `http://localhost:3000`, `http://127.0.0.1:3000` o `https://sigo.vercel.app`. Esos orígenes, y `https://*.trycloudflare.com` por regex, ya están permitidos con credenciales. Se cambian con `SIGO_CORS_ORIGINS` y `SIGO_CORS_ORIGIN_REGEX` (vienen en `backend/.env.example`).
+El navegador del frontend manda `Origin` desde `http://localhost:3000`, `http://127.0.0.1:3000` o `https://sigo.vercel.app`. Esos orígenes, y en desarrollo `https://*.trycloudflare.com` por regex, ya están permitidos con credenciales. Se cambian con `SIGO_CORS_ORIGINS` y `SIGO_CORS_ORIGIN_REGEX` (vienen en `backend/.env.example`). En producción `SIGO_CORS_ORIGIN_REGEX` va vacío: sin trycloudflare.
 
 ```bash
 cd backend && SIGO_CORS_ORIGINS='http://localhost:3000,http://127.0.0.1:3000,https://sigo.vercel.app' SIGO_CORS_ORIGIN_REGEX='^https://[a-zA-Z0-9-]+\.trycloudflare\.com$' SIGO_ENV=desarrollo SIGO_DEV_LOGIN=true uvicorn app.main:app --host 127.0.0.1 --port 8000 & cloudflared tunnel --url http://127.0.0.1:8000

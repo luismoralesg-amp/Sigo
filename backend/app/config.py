@@ -22,7 +22,8 @@ class Config(BaseSettings):
     sigo_env: Literal["desarrollo", "demo", "produccion"] = "desarrollo"
     # Lista separada por comas. El frontend (Next.js) sale de localhost:3000 o de Vercel.
     sigo_cors_origins: str = ORIGENES_CORS
-    # *.trycloudflare.com. Vacío vuelve al default: el túnel tiene que poder llamar al API.
+    # Desarrollo: regex del túnel. En producción la variable va vacía (sin trycloudflare).
+    # Si no está definida, queda el default del túnel. Cadena vacía lo apaga.
     sigo_cors_origin_regex: str = REGEX_TUNEL
     sigo_public_api_url: str = "http://localhost:8000"
     sigo_public_app_url: str = "https://sigo.app"
@@ -59,8 +60,9 @@ class Config(BaseSettings):
     @field_validator("sigo_cors_origin_regex", mode="before")
     @classmethod
     def _regex_vacio(cls, value: object) -> object:
-        if value is None or (isinstance(value, str) and not value.strip()):
-            return REGEX_TUNEL
+        # Producción manda la variable vacía: no reponer el túnel.
+        if isinstance(value, str) and not value.strip():
+            return ""
         return value
 
     @property

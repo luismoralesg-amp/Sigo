@@ -33,7 +33,7 @@ Rosa y Mateo quedan en el puesto de Ana, así que el demo no cambia. Cada `GET /
 
 La exportación no se le abrió. Phil (endpoint 12) la reserva a la paciente. Un `GET /exportar` de la enfermera responde 403 `rol_no_permitido` y también queda en la bitácora interna.
 
-`GET /pacientes/buscar` sigue nacional: si el DPI existe, devuelve el paciente (forma del contrato). Vaciar la lista cuando sí existe haría que el front intente crearlo y reciba 409. El expediente, las versiones, las fichas, las correcciones y los códigos sí están cerrados por centro. La respuesta de búsqueda incluye alergias: es el hueco que se deja para no contradecir a Phil.
+`GET /pacientes/buscar` sigue nacional y responde 200 con el paciente si el DPI existe (lista vacía solo si no existe; ni 403 ni 409). La forma es la de Phil (`pacientes: [Paciente]`). Fuera de emergencia, `alergias` y `condiciones_cronicas` van en `[]`, también si el paciente es del centro de la enfermera. Con `?emergencia=true` se devuelven los valores guardados. El expediente, las versiones, las fichas, las correcciones y los códigos siguen la regla de centro de arriba.
 
 ## P-05 (fichas anteriores al DPI) — no implementado
 
@@ -48,5 +48,5 @@ Cuando se implemente, sin ligar solo:
 ## Inconsistencias que no se tocaron
 
 - El DPI de ejemplo de Phil (`2547896310801`) no pasa el dígito verificador. El demo usa `2547896330801`.
-- `modulos-arturo/INTERFACES.md` dice que el médico con código también exporta. Phil dice que exporta solo la paciente. El backend sigue a Phil.
+- La descarga (`GET /pacientes/{id}/exportar`) es solo de la paciente, igual que `modulos-arturo/INTERFACES.md` y el endpoint 12 de Phil.
 - `formato_no_soportado` no está en la tabla de Phil; se documentó arriba y no se reescribe como `validacion`.
