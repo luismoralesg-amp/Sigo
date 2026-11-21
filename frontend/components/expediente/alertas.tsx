@@ -22,15 +22,18 @@ export function BannerAlergias({ alergias, className }: { alergias: string[]; cl
   );
 }
 
-/** Las tres listas de `alertas`. Es todo lo que ve el médico en un acceso de emergencia. */
-export function PanelAlertas({ alertas, className }: { alertas: Expediente["alertas"]; className?: string }) {
+/**
+ * Listas de `alertas`. En un acceso de emergencia (contrato v3, punto 19) solo se muestran alergias y
+ * condiciones crónicas: `sinMedicamentos` oculta esa sección.
+ */
+export function PanelAlertas({ alertas, className, sinMedicamentos = false }: { alertas: Expediente["alertas"]; className?: string; sinMedicamentos?: boolean }) {
   const grupos = [
     { icono: TriangleAlert, titulo: "Alergias", items: alertas.alergias, vacio: "Ninguna registrada", fuerte: true },
     { icono: HeartPulse, titulo: "Condiciones crónicas", items: alertas.condiciones_cronicas, vacio: "Ninguna registrada" },
-    { icono: Pill, titulo: "Medicamentos actuales", items: alertas.medicamentos, vacio: "Ninguno registrado" },
+    ...(sinMedicamentos ? [] : [{ icono: Pill, titulo: "Medicamentos actuales", items: alertas.medicamentos, vacio: "Ninguno registrado" }]),
   ];
   return (
-    <dl className={cn("grid gap-px overflow-hidden rounded-[16px] border border-linea bg-linea sm:grid-cols-3", className)}>
+    <dl className={cn("grid gap-px overflow-hidden rounded-[12px] border border-linea bg-linea", sinMedicamentos ? "sm:grid-cols-2" : "sm:grid-cols-3", className)}>
       {grupos.map(({ icono: Icono, titulo, items, vacio, fuerte }) => (
         <div key={titulo} className="bg-superficie px-4 py-4 sm:px-5">
           <dt className="flex items-center gap-2 text-[0.9rem] font-semibold text-tinta-suave">
