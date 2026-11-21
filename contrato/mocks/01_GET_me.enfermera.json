@@ -1,0 +1,14 @@
+{
+  "id": "u_01",
+  "nombre": "Ana Tzul",
+  "rol": "enfermera",
+  "paciente_id": null,
+  "debe_cambiar_pin": false,
+  "centro": {
+    "id": "c_01",
+    "nombre": "Puesto de Salud de Chichicastenango",
+    "tipo": "puesto",
+    "municipio": "Chichicastenango",
+    "departamento": "Quiché"
+  }
+}

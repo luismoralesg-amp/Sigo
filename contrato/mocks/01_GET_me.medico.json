@@ -1,0 +1,14 @@
+{
+  "id": "u_02",
+  "nombre": "Dr. Mateo Us",
+  "rol": "medico",
+  "paciente_id": null,
+  "debe_cambiar_pin": false,
+  "centro": {
+    "id": "c_02",
+    "nombre": "Hospital Regional de Quiché",
+    "tipo": "hospital",
+    "municipio": "Santa Cruz del Quiché",
+    "departamento": "Quiché"
+  }
+}

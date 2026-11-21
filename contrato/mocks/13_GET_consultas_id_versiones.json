@@ -1,0 +1,46 @@
+{
+  "versiones": [
+    {
+      "version": 2,
+      "datos": {
+        "fecha": "2026-10-02",
+        "centro": {
+          "id": "c_01",
+          "nombre": "Puesto de Salud de Chichicastenango",
+          "tipo": "puesto",
+          "municipio": "Chichicastenango",
+          "departamento": "Quiché"
+        },
+        "motivo": "Dolor de garganta y fiebre",
+        "diagnostico": "Faringoamigdalitis aguda",
+        "tratamiento": "Azitromicina 500 mg al día por 3 días",
+        "vacunas": [],
+        "original_url": "/demo/ficha-rosa-2026.jpg"
+      },
+      "motivo_cambio": "Fecha mal leída",
+      "editada_por": "Ana Tzul",
+      "editada_en": "2026-10-02T11:12:00-06:00"
+    },
+    {
+      "version": 1,
+      "datos": {
+        "fecha": "2026-10-20",
+        "centro": {
+          "id": "c_01",
+          "nombre": "Puesto de Salud de Chichicastenango",
+          "tipo": "puesto",
+          "municipio": "Chichicastenango",
+          "departamento": "Quiché"
+        },
+        "motivo": "Dolor de garganta y fiebre",
+        "diagnostico": "Faringoamigdalitis aguda",
+        "tratamiento": "Azitromicina 500 mg al día por 3 días",
+        "vacunas": [],
+        "original_url": "/demo/ficha-rosa-2026.jpg"
+      },
+      "motivo_cambio": null,
+      "editada_por": "Ana Tzul",
+      "editada_en": "2026-10-02T11:05:00-06:00"
+    }
+  ]
+}

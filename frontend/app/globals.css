@@ -1,0 +1,191 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   SIGO · tokens. Línea visual de Simple (simple.org) con la marca Sigo:
+   utilitario y calmado. Sin gradientes, sombras fuertes ni ilustraciones.
+   El color solo significa algo: rojo = alergia o emergencia,
+   amarillo = dato dudoso, verde = guardado, azul marino = acción.
+   El cobre es SOLO decorativo (indicador, subrayado): nunca texto ni botones.
+------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --sigo-navy: #233458;
+  --sigo-navy-pressed: #1a2744;
+  --sigo-ink-2: #5b6478;
+  --sigo-cream: #eeeae5;
+  --sigo-sand: #e4dcd6;
+  --sigo-surface: #ffffff;
+  --sigo-copper: #d4996b;
+  --sigo-alerta: #b42318;
+  --sigo-alerta-fondo: #fdecea;
+  --sigo-dudoso: #8a5a00;
+  --sigo-dudoso-fondo: #fff3c4;
+  --sigo-dudoso-borde: #e0b000;
+  --sigo-ok: #1e7a46;
+  --sigo-ok-fondo: #e7f4ec;
+
+  /* Nombres que usa el código (se mantienen para no tocar cada componente). */
+  --papel: var(--sigo-cream);
+  --superficie: var(--sigo-surface);
+  --tinta: var(--sigo-navy);
+  --tinta-suave: var(--sigo-ink-2);
+  --tinta-tenue: var(--sigo-ink-2);
+  --linea: var(--sigo-sand);
+  --linea-fuerte: #948c85; /* borde de inputs: 3:1 sobre blanco */
+
+  --primario: var(--sigo-navy);
+  --primario-hover: var(--sigo-navy-pressed);
+  --primario-suave: #e6e9f0;
+  --primario-tinta: var(--sigo-navy);
+
+  --kraft: var(--sigo-sand);
+  --kraft-claro: #f6f2ee;
+  --kraft-borde: var(--sigo-copper);
+  --kraft-tinta: var(--sigo-ink-2);
+
+  --revisar: var(--sigo-dudoso-borde);
+  --revisar-fondo: var(--sigo-dudoso-fondo);
+  --revisar-tinta: var(--sigo-dudoso);
+
+  --alerta: var(--sigo-alerta);
+  --alerta-hover: #921c13;
+  --alerta-fondo: var(--sigo-alerta-fondo);
+
+  --confirmado: var(--sigo-ok);
+  --confirmado-fondo: var(--sigo-ok-fondo);
+}
+
+@theme inline {
+  --color-papel: var(--papel);
+  --color-superficie: var(--superficie);
+  --color-tinta: var(--tinta);
+  --color-tinta-suave: var(--tinta-suave);
+  --color-tinta-tenue: var(--tinta-tenue);
+  --color-linea: var(--linea);
+  --color-linea-fuerte: var(--linea-fuerte);
+  --color-primario: var(--primario);
+  --color-primario-hover: var(--primario-hover);
+  --color-primario-suave: var(--primario-suave);
+  --color-primario-tinta: var(--primario-tinta);
+  --color-kraft: var(--kraft);
+  --color-kraft-claro: var(--kraft-claro);
+  --color-kraft-borde: var(--kraft-borde);
+  --color-kraft-tinta: var(--kraft-tinta);
+  --color-revisar: var(--revisar);
+  --color-revisar-fondo: var(--revisar-fondo);
+  --color-revisar-tinta: var(--revisar-tinta);
+  --color-dudoso: var(--sigo-dudoso);
+  --color-dudoso-fondo: var(--sigo-dudoso-fondo);
+  --color-dudoso-borde: var(--sigo-dudoso-borde);
+  --color-alerta: var(--alerta);
+  --color-alerta-hover: var(--alerta-hover);
+  --color-alerta-fondo: var(--alerta-fondo);
+  --color-confirmado: var(--confirmado);
+  --color-confirmado-fondo: var(--confirmado-fondo);
+  --color-ok: var(--sigo-ok);
+  --color-ok-fondo: var(--sigo-ok-fondo);
+  --color-cobre: var(--sigo-copper);
+
+  /* Cuerpo con la fuente del sistema (carga rápido en celulares viejos); Poppins solo en títulos y "SIGO". */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-poppins), system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --radius-md: 12px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+
+  --shadow-calida: none;
+  --shadow-calida-lg: 0 8px 24px rgba(35, 52, 88, 0.12);
+}
+
+html {
+  font-size: 106.25%; /* 17 px de base */
+  -webkit-text-size-adjust: 100%;
+}
+@media (min-width: 1024px) {
+  html { font-size: 112.5%; } /* 18 px en computadora */
+}
+
+body {
+  background: var(--papel);
+  color: var(--tinta);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--font-poppins), system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  input, textarea, select, button { font: inherit; }
+  a { text-underline-offset: 3px; }
+}
+
+/* números tabulares para fechas, DPI, códigos y PIN */
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+/* foco visible y consistente */
+:focus-visible {
+  outline: 3px solid var(--primario);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection { background: var(--primario-suave); color: var(--tinta); }
+
+/* Indicador de carga (barra que se desliza). */
+@keyframes deslizar {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(330%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Piezas base de las pantallas ---------- */
+@layer components {
+  .titulo { font-family: var(--font-poppins), system-ui, sans-serif; font-weight: 600; font-size: 1.6rem; line-height: 1.2; color: var(--primario); }
+  @media (min-width: 1024px) { .titulo { font-size: 1.5rem; } } /* 27 px con base de 18 */
+  .subtitulo { font-family: var(--font-poppins), system-ui, sans-serif; font-weight: 600; font-size: 1.3rem; line-height: 1.25; color: var(--tinta); }
+  .tarjeta { display: block; background: var(--superficie); border: 1px solid var(--linea); border-radius: 12px; }
+  .cifra { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; letter-spacing: 0.03em; }
+  .etiqueta-campo { font-size: 0.95rem; font-weight: 600; color: var(--tinta-suave); }
+  .etiqueta-dudoso, .etiqueta-ok, .etiqueta-alerta {
+    display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px;
+    padding: 0.3rem 0.75rem; font-size: 0.88rem; font-weight: 600; line-height: 1.2;
+  }
+  .etiqueta-dudoso { background: var(--sigo-dudoso-fondo); color: var(--sigo-dudoso); }
+  .etiqueta-ok { background: var(--sigo-ok-fondo); color: var(--sigo-ok); }
+  .etiqueta-alerta { background: var(--sigo-alerta-fondo); color: var(--sigo-alerta); }
+  .aviso-dudoso { border-radius: 12px; border: 1px solid var(--sigo-dudoso-borde); background: var(--sigo-dudoso-fondo); color: var(--sigo-dudoso); }
+  .aviso-alerta { border-radius: 12px; border: 1px solid var(--sigo-alerta); background: var(--sigo-alerta-fondo); color: var(--sigo-alerta); }
+
+  /* Antes eran texturas de papel; ahora superficies lisas (se conservan los nombres por compatibilidad). */
+  .papel-kraft { background: var(--superficie); border: 1px solid var(--linea); }
+  .papel-kraft-fuerte { background: var(--sigo-sand); }
+  .esquina-doblada { position: relative; }
+  .tabla-vieja { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+}
+
+/* Espacio al final para que la barra fija de la acción principal no tape contenido. */
+main:has(.barra-accion) { padding-bottom: 7.5rem; }
+@media (min-width: 1024px) {
+  main:has(.barra-accion-movil):not(:has(.barra-accion:not(.barra-accion-movil))) { padding-bottom: 2rem; }
+}
+
+/* Imprimir solo lo marcado */
+@media print {
+  body * { visibility: hidden !important; }
+  .imprimible, .imprimible * { visibility: visible !important; }
+  .imprimible { position: fixed; left: 50%; top: 24px; transform: translateX(-50%); box-shadow: none !important; }
+}

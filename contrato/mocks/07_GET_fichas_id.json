@@ -1,0 +1,75 @@
+{
+  "id": "f_88",
+  "paciente_id": "p_12",
+  "origen": "foto",
+  "importacion_id": null,
+  "client_id": "7c1e2b9a-4f6d-4e1a-9c3b-1d2e3f4a5b6c",
+  "estado": "lista",
+  "originales": [
+    "/demo/ficha-rosa-2025.jpg"
+  ],
+  "extraccion": {
+    "paciente": {
+      "nombre": {
+        "valor": "Rosa Batz Tzoc",
+        "confianza": "alta"
+      },
+      "dpi": {
+        "valor": "2547896330801",
+        "confianza": "alta"
+      },
+      "fecha_nacimiento": {
+        "valor": "1984-03-12",
+        "confianza": "alta"
+      },
+      "sexo": {
+        "valor": "F",
+        "confianza": "alta"
+      },
+      "comunidad": {
+        "valor": "Chichicastenango",
+        "confianza": "alta"
+      },
+      "alergias": {
+        "valor": [
+          "penicilina"
+        ],
+        "confianza": "alta"
+      },
+      "condiciones_cronicas": {
+        "valor": [],
+        "confianza": "alta"
+      }
+    },
+    "consultas": [
+      {
+        "fecha": {
+          "valor": "2025-08-14",
+          "confianza": "alta"
+        },
+        "motivo": {
+          "valor": "Control prenatal",
+          "confianza": "alta"
+        },
+        "diagnostico": {
+          "valor": "Embarazo 24 semanas",
+          "confianza": "baja"
+        },
+        "tratamiento": {
+          "valor": "Sulfato ferroso",
+          "confianza": "alta"
+        },
+        "vacunas": {
+          "valor": [
+            "Td"
+          ],
+          "confianza": "alta"
+        },
+        "pagina": 0
+      }
+    ],
+    "error": null
+  },
+  "error": null,
+  "creada_en": "2026-11-21T10:42:00-06:00"
+}

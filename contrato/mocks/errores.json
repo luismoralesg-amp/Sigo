@@ -1,30 +1,116 @@
 {
-  "401": {
-    "error": "no_autenticado",
-    "mensaje": "Iniciá sesión para continuar."
+  "400_validacion": {
+    "error": {
+      "codigo": "validacion",
+      "mensaje": "Revisa los datos marcados."
+    }
   },
-  "403_paciente_escribe": {
-    "error": "prohibido",
-    "mensaje": "El o la paciente solo puede ver y descargar su expediente. No puede modificarlo ni borrarlo."
+  "400_identificador_invalido": {
+    "error": {
+      "codigo": "identificador_invalido",
+      "mensaje": "Escribe un DPI de 13 dígitos o un identificador TMP-."
+    }
   },
-  "403_medico_sin_consentimiento": {
-    "error": "prohibido",
-    "mensaje": "El médico solo puede leer este expediente con un consentimiento temporal (código o QR) vigente."
+  "400_sin_consentimiento": {
+    "error": {
+      "codigo": "sin_consentimiento",
+      "mensaje": "Falta el consentimiento de la paciente."
+    }
   },
-  "403_medico_escribe": {
-    "error": "prohibido",
-    "mensaje": "El médico tiene acceso de solo lectura. No puede modificar, exportar ni borrar."
+  "400_motivo_requerido": {
+    "error": {
+      "codigo": "motivo_requerido",
+      "mensaje": "Escribe el motivo, con al menos 10 caracteres."
+    }
   },
-  "403_borrar": {
-    "error": "prohibido",
-    "mensaje": "Ningún rol puede borrar expedientes. El historial es de solo agregado."
+  "400_formato_no_soportado": {
+    "error": {
+      "codigo": "formato_no_soportado",
+      "mensaje": "Sube un Excel, CSV o Access."
+    }
   },
-  "403_ajeno": {
-    "error": "prohibido",
-    "mensaje": "Solo podés ver tu propio expediente."
+  "401_sin_sesion": {
+    "error": {
+      "codigo": "sin_sesion",
+      "mensaje": "Tu sesión terminó. Vuelve a entrar."
+    }
   },
-  "422_dpi": {
-    "error": "dpi_invalido",
-    "mensaje": "El CUI / DPI no pasó la validación del dígito verificador, el departamento o el municipio."
+  "401_pin_incorrecto": {
+    "error": {
+      "codigo": "pin_incorrecto",
+      "mensaje": "DPI o PIN incorrectos."
+    }
+  },
+  "403_rol_no_permitido": {
+    "error": {
+      "codigo": "rol_no_permitido",
+      "mensaje": "No tienes acceso a esto."
+    }
+  },
+  "403_acceso_vencido": {
+    "error": {
+      "codigo": "acceso_vencido",
+      "mensaje": "El acceso venció. Pide un código nuevo."
+    }
+  },
+  "403_solo_emergencia": {
+    "error": {
+      "codigo": "solo_emergencia",
+      "mensaje": "Para ver más, pide el código a la paciente."
+    }
+  },
+  "404_no_existe": {
+    "error": {
+      "codigo": "no_existe",
+      "mensaje": "No encontrado."
+    }
+  },
+  "409_dpi_ya_existe": {
+    "error": {
+      "codigo": "dpi_ya_existe",
+      "mensaje": "Ese DPI ya está registrado."
+    }
+  },
+  "409_ficha_ya_confirmada": {
+    "error": {
+      "codigo": "ficha_ya_confirmada",
+      "mensaje": "Esta ficha ya se confirmó."
+    }
+  },
+  "409_codigo_ya_usado": {
+    "error": {
+      "codigo": "codigo_ya_usado",
+      "mensaje": "Este código ya se usó."
+    }
+  },
+  "410_codigo_vencido": {
+    "error": {
+      "codigo": "codigo_vencido",
+      "mensaje": "Este código ya venció. Pide uno nuevo a la paciente."
+    }
+  },
+  "413_archivo_muy_grande": {
+    "error": {
+      "codigo": "archivo_muy_grande",
+      "mensaje": "El archivo es muy grande. Divide el archivo."
+    }
+  },
+  "422_ilegible": {
+    "error": {
+      "codigo": "ilegible",
+      "mensaje": "No se pudo leer. Toma la foto otra vez, con más luz."
+    }
+  },
+  "429_demasiados_intentos": {
+    "error": {
+      "codigo": "demasiados_intentos",
+      "mensaje": "Demasiados intentos. Espera 15 minutos."
+    }
+  },
+  "503_ia_no_disponible": {
+    "error": {
+      "codigo": "ia_no_disponible",
+      "mensaje": "El asistente no respondió. Intenta de nuevo."
+    }
   }
 }

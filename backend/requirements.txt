@@ -1,6 +1,10 @@
 # Dependencias de ejecución. Versiones fijas (M-03).
 # Las de prueba viven en requirements-dev.txt.
 fastapi==0.115.12
+# fastapi 0.115.12 admite starlette 0.40 o mayor, anterior a 0.47. Se fija 0.46.2.
+# El 413 cambió de frase ("Request Entity Too Large" / "Content Too Large");
+# el test del OpenAPI no compara esas frases.
+starlette==0.46.2
 uvicorn==0.34.0
 pydantic==2.10.6
 pydantic-settings==2.7.1
