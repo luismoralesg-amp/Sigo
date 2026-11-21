@@ -1,0 +1,7 @@
+Nombre;Apellidos;CUI;Fecha nac.;Sexo;Aldea;Alergias;Enfermedades crónicas;Fecha atención;Motivo de consulta;Diagnóstico;Medicamentos;Vacunas;Observaciones
+Marta Elena;Choc Ixcoy;2468-1000-90901;22/05/1978;Femenino;Paraje Los Pinos;ibuprofeno;hipertensión;15/03/2024;Control de presión;Hipertensión arterial;Losartán 50 mg;Td;NO COPIAR ESTA NOTA
+José Tomás;Guarcax Sicajau;2468100170901;03-11-1991;M;Cantón La Esperanza;Ninguna;;2019-07-08;Dolor de oído;Otitis media;Amoxicilina;;
+Lucía Beatriz;Morales Pac;;12/08/2018;F;Cantón La Esperanza;Ninguna;;;Control niño sano;;;;
+;;;;;;;;;;;;;
+Pedro Antonio;Sacal Xiloj;246 810 033 0901;13/04/1985;Masculino;Paraje Los Pinos;;diabetes;04/13/2023;Control;Diabetes mellitus tipo 2;Metformina;Influenza;
+Ana;López;123;no-es-fecha;Otro;;;;;;;;;columna basura
