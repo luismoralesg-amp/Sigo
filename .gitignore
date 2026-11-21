@@ -7,3 +7,6 @@ node_modules/
 .next/
 *.db
 eval_resultados.json
+*.egg-info/
+models/
+.ollama/
