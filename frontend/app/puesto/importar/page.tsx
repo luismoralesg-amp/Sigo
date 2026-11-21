@@ -28,15 +28,25 @@ export default function PaginaImportar() {
 const MENSAJES: Partial<Record<string, string>> = {
   formato_no_soportado: "Sube un Excel (.xlsx), CSV o Access (.accdb o .mdb).",
   archivo_muy_grande: "El archivo pasa de 20 MB. Divide el archivo y súbelo por partes.",
+  // fetch lanza en CORS o sin red. El cliente lo traduce a sin_senal; aquí se dice en voz alta.
+  sin_senal: "No se pudo enviar el archivo al servidor. Revisa la conexión e intenta de nuevo.",
 };
 
 function Subir({ onResultado }: { onResultado: (r: ResultadoImportacion) => void }) {
   const [archivo, setArchivo] = useState<File | null>(null);
   const [subiendo, setSubiendo] = useState(false);
+  const [accion, setAccion] = useState<"ejemplo" | "archivo" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const puedeImportar = Boolean(archivo) && !subiendo;
 
-  async function subir(a: File | null = archivo) {
-    if (!a) return setError("Elige un archivo primero.");
+  async function subir(a: File | null, desde: "ejemplo" | "archivo") {
+    if (!a) {
+      setError("Elige un archivo primero.");
+      setSubiendo(false);
+      setAccion(null);
+      return;
+    }
+    setAccion(desde);
     setSubiendo(true);
     setError(null);
     try {
@@ -45,19 +55,35 @@ function Subir({ onResultado }: { onResultado: (r: ResultadoImportacion) => void
       const ea = aErrorApi(e);
       setError(MENSAJES[ea.codigo] ?? ea.mensaje);
       setSubiendo(false);
+      setAccion(null);
     }
   }
 
   async function usarEjemplo() {
+    if (subiendo) return;
+    setAccion("ejemplo");
+    setSubiendo(true);
+    setError(null);
+    let a: File;
     try {
       const r = await fetch("/ejemplos/registro_puesto_2015_2022.csv");
-      const a = new File([await r.blob()], "registro_puesto_2015_2022.csv", { type: "text/csv" });
-      setArchivo(a);
-      await subir(a);
+      const tipo = r.headers.get("content-type") ?? "";
+      // Un 404 de Next devuelve HTML. Sin esta revisión se subía esa página y el clic parecía mudo.
+      if (!r.ok || tipo.includes("text/html")) throw new Error("ejemplo");
+      const blob = await r.blob();
+      if (blob.size === 0) throw new Error("ejemplo");
+      a = new File([blob], "registro_puesto_2015_2022.csv", { type: "text/csv" });
     } catch {
-      setError("No se pudo cargar el archivo de ejemplo.");
+      setError("No se pudo cargar el archivo de ejemplo. Revisa la conexión e intenta de nuevo.");
+      setSubiendo(false);
+      setAccion(null);
+      return;
     }
+    setArchivo(a);
+    await subir(a, "ejemplo");
   }
+
+  const importandoEjemplo = subiendo && accion === "ejemplo";
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -65,7 +91,17 @@ function Subir({ onResultado }: { onResultado: (r: ResultadoImportacion) => void
       <p className="mt-1.5 text-tinta-suave">Excel, CSV o Access del sistema anterior, tal como está. El archivo original no se toca: cada paciente queda como una ficha para revisar.</p>
 
       <label htmlFor="archivo" className="tarjeta mt-6 flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 border-dashed p-6 text-center hover:border-primario focus-within:outline focus-within:outline-3 focus-within:outline-primario">
-        <input id="archivo" type="file" accept=".xlsx,.csv,.accdb,.mdb" className="sr-only" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} disabled={subiendo} />
+        <input
+          id="archivo"
+          type="file"
+          accept=".xlsx,.csv,.accdb,.mdb"
+          className="sr-only"
+          onChange={(e) => {
+            setArchivo(e.target.files?.[0] ?? null);
+            setError(null);
+          }}
+          disabled={subiendo}
+        />
         {archivo ? (
           <>
             <FileSpreadsheet className="h-8 w-8 text-primario" aria-hidden="true" />
@@ -82,14 +118,27 @@ function Subir({ onResultado }: { onResultado: (r: ResultadoImportacion) => void
       </label>
       {error && <MensajeError className="mt-3">{error}</MensajeError>}
 
-      <button onClick={usarEjemplo} disabled={subiendo} className="-ml-2 mt-3 inline-flex min-h-12 items-center gap-2 rounded-[10px] px-2 font-semibold text-primario hover:bg-primario-suave disabled:opacity-50">
-        <FileSpreadsheet className="h-5 w-5" aria-hidden="true" /> Probar con el registro de ejemplo
+      <button
+        type="button"
+        onClick={() => void usarEjemplo()}
+        disabled={subiendo}
+        aria-busy={importandoEjemplo}
+        className="-ml-2 mt-3 inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-[10px] px-2 font-semibold text-primario underline-offset-4 transition-colors hover:bg-superficie hover:underline focus-visible:bg-superficie focus-visible:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:no-underline"
+      >
+        {importandoEjemplo ? <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" /> : <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />}
+        {importandoEjemplo ? "Importando el ejemplo…" : "Probar con el registro de ejemplo"}
       </button>
 
       <BarraAccion>
-        <Boton tamaño="accion" onClick={() => void subir()} disabled={subiendo}>
-          {subiendo ? <LoaderCircle className="animate-spin" /> : <Upload />} {subiendo ? "Leyendo el archivo…" : "Importar archivo"}
-        </Boton>
+        <p id="ayuda-importar" className="text-center text-[0.95rem] text-tinta-suave">
+          {subiendo ? "Leyendo el archivo…" : archivo ? "El archivo está listo. Puedes importarlo." : "Elige un archivo para poder importarlo."}
+        </p>
+        {/* El botón deshabilitado no recibe el mouse (pointer-events: none). El marco sí, y muestra not-allowed. */}
+        <div className={cn("w-full", puedeImportar ? "" : "cursor-not-allowed")}>
+          <Boton tamaño="accion" onClick={() => void subir(archivo, "archivo")} disabled={!puedeImportar} aria-describedby="ayuda-importar">
+            {subiendo ? <LoaderCircle className="animate-spin" /> : <Upload />} {subiendo ? "Leyendo el archivo…" : "Importar archivo"}
+          </Boton>
+        </div>
       </BarraAccion>
     </div>
   );
@@ -157,9 +206,13 @@ function Resultado({ r, onOtro }: { r: ResultadoImportacion; onOtro: () => void 
                 {(["error", "todas"] as const).map((v) => (
                   <button
                     key={v}
+                    type="button"
                     onClick={() => setVerFilas(v)}
                     aria-pressed={verFilas === v}
-                    className={cn("min-h-12 rounded-[9px] px-3 font-semibold", verFilas === v ? "bg-primario text-white" : "text-tinta-suave")}
+                    className={cn(
+                      "min-h-12 cursor-pointer rounded-[9px] px-3 font-semibold transition-colors hover:bg-primario-suave focus-visible:bg-primario-suave",
+                      verFilas === v ? "bg-primario text-white hover:bg-primario-hover focus-visible:bg-primario-hover" : "text-tinta-suave"
+                    )}
                   >
                     {v === "error" ? `Con error (${r.con_errores})` : `Todas (${r.total_filas})`}
                   </button>
