@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sigo-modulos-arturo"
+version = "0.1.0"
+description = "CAG local y exportación de SIGO. El backend los carga con SIGO_CAG_IMPL y SIGO_EXPORT_IMPL."
+requires-python = ">=3.11"
+dependencies = [
+  "openpyxl==3.1.5",
+  "weasyprint==70.0",
+  "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.2.0"]
+
+[tool.setuptools.packages.find]
+include = ["sigo_modulos*", "cag*"]
+exclude = ["cag.tests*"]
+
