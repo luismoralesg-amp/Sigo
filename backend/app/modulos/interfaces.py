@@ -35,16 +35,20 @@ class RespuestaCAG(TypedDict):
 
 
 class FilaImportada(TypedDict):
-    dpi: str | None          # DPI leído de la fila (13 dígitos) o None
-    fila: int                # número de fila o registro en el archivo original (1 = primera de datos)
-    extraccion: dict          # Extraccion del contrato, con confianza por campo
+    dpi: str | None          # DPI leído (13 dígitos) o None. Un CUI con verificador mal no es error de fila.
+    fila: int                # número de fila en el archivo (1 = primera de datos)
+    extraccion: dict          # Extraccion v1. Confianza "alta"|"baja" (la escala 0-1 del v0 está obsoleta).
+                              # Si la fila es ilegible: extraccion["error"] (str), campos en null,
+                              # confianza "baja" y consultas [].
 
 
-# Códigos de error que el backend entiende -> (HTTP, codigo del contrato)
+# Códigos de error que el backend entiende -> (HTTP, codigo del contrato).
+# formato_no_soportado se responde tal cual: 400 "formato_no_soportado",
+# no se reescribe como "validacion".
 CODIGOS_ERROR: dict[str, tuple[int, str]] = {
     "ilegible": (422, "ilegible"),
     "ia_no_disponible": (503, "ia_no_disponible"),
-    "formato_no_soportado": (400, "validacion"),
+    "formato_no_soportado": (400, "formato_no_soportado"),
     "formato_no_disponible": (503, "ia_no_disponible"),
 }
 
@@ -63,8 +67,9 @@ class ErrorModulo(Exception):
 @runtime_checkable
 class Vision(Protocol):
     def extraer_ficha(self, imagenes: list[bytes]) -> dict:
-        """JPEGs en orden de página -> Extraccion {"paciente": {...Campo}, "consultas": [...]}.
-        Lo que no se lee va con valor None y confianza "baja"; nunca inventa.
+        """JPEGs en orden de página -> Extraccion {"paciente": {...Campo}, "consultas": [...]}
+        con "error" opcional. Si "error" viene informado, el backend responde 422 "ilegible"
+        y no guarda la ficha. Lo que no se lee va con valor None y confianza "baja"; nunca inventa.
         Errores: codigo "ilegible" (422) o "ia_no_disponible" (503)."""
         ...
 
@@ -73,7 +78,10 @@ class Vision(Protocol):
 class Importador(Protocol):
     def leer_archivo(self, nombre_archivo: str, contenido: bytes) -> list[FilaImportada]:
         """.xlsx, .csv o .accdb/.mdb -> una FilaImportada por paciente/fila.
-        Errores: codigo "formato_no_soportado" (400)."""
+        Sexo fuera de F|M: valor null y confianza "baja". pagina de cada consulta = 0.
+        CUI que no pasa el verificador: se devuelve con confianza "baja" y no es error de fila.
+        Access (.accdb/.mdb) necesita mdbtools en el servidor.
+        Errores: codigo "formato_no_soportado" (400, ese codigo, no "validacion")."""
         ...
 
 
