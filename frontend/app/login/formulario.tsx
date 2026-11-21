@@ -1,90 +1,95 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Hospital, Check, ArrowRight, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { ArrowRight, LoaderCircle } from "lucide-react";
 import { Boton } from "@/components/ui/button";
 import { Entrada, Etiqueta } from "@/components/ui/input";
-import { USUARIOS } from "@/datos/demo";
+import { MensajeError } from "@/components/estado";
+import { entrarPersonal, INICIO_POR_ROL } from "@/lib/api/sesion";
+import { USA_MOCKS } from "@/lib/api/cliente";
+import { aErrorApi } from "@/lib/api/errores";
 import { cn } from "@/lib/utils";
 
-const OPCIONES = [
-  { rol: "puesto" as const, icono: Building2, titulo: USUARIOS.puesto.centro.nombre, detalle: "Totonicapán · Digitalizar e importar" },
-  { rol: "hospital" as const, icono: Hospital, titulo: USUARIOS.hospital.centro.nombre, detalle: "Quetzaltenango · Consultar expedientes" },
+const DEMO = [
+  { correo: "ana.tzul@sigo.demo", titulo: "Ana Tzul", detalle: "Enfermera, Puesto de Salud de Chichicastenango" },
+  { correo: "mateo.us@sigo.demo", titulo: "Dr. Mateo Us", detalle: "Médico, Hospital Regional de Quiché" },
 ];
 
 export function FormularioEntrada() {
   const router = useRouter();
-  const [rol, setRol] = useState<"puesto" | "hospital">("puesto");
-  const [correo, setCorreo] = useState<string>(USUARIOS.puesto.correo);
+  const [correo, setCorreo] = useState(USA_MOCKS ? DEMO[0].correo : "");
+  const [clave, setClave] = useState(USA_MOCKS ? "demostracion" : "");
   const [entrando, setEntrando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function elegir(r: "puesto" | "hospital") {
-    setRol(r);
-    setCorreo(USUARIOS[r].correo);
-  }
-
-  function entrar(e: React.FormEvent) {
+  async function entrar(e: React.FormEvent) {
     e.preventDefault();
     setEntrando(true);
-    setTimeout(() => router.push(rol === "puesto" ? "/puesto" : "/hospital"), 450);
+    setError(null);
+    try {
+      const u = await entrarPersonal(correo, clave);
+      router.replace(INICIO_POR_ROL[u.rol]);
+    } catch (err) {
+      setError(aErrorApi(err).mensaje);
+      setEntrando(false);
+    }
   }
 
   return (
-    <form onSubmit={entrar} className="mt-7 space-y-6">
-      <fieldset>
-        <legend className="mb-2.5 text-[0.9rem] font-semibold text-tinta-suave">Centro de salud</legend>
-        <div className="space-y-3" role="radiogroup">
-          {OPCIONES.map(({ rol: r, icono: Icono, titulo, detalle }) => {
-            const activo = rol === r;
-            return (
-              <button
-                key={r}
-                type="button"
-                role="radio"
-                aria-checked={activo}
-                onClick={() => elegir(r)}
-                className={cn(
-                  "flex w-full items-center gap-3.5 rounded-[16px] border bg-superficie p-3.5 text-left transition-all duration-200",
-                  activo ? "border-primario shadow-[0_0_0_3px_rgba(40,54,89,.14)]" : "border-linea hover:border-linea-fuerte"
-                )}
-              >
-                <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-[12px] transition-colors", activo ? "bg-primario text-white" : "bg-papel text-tinta-suave")}>
-                  <Icono className="h-6 w-6" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold leading-snug">{titulo}</span>
-                  <span className="block text-[0.85rem] text-tinta-tenue">{detalle}</span>
-                </span>
-                <span className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 transition-colors", activo ? "border-primario bg-primario text-white" : "border-linea-fuerte")}>
-                  {activo && (
-                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 0.18 }}>
-                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                    </motion.span>
+    <form onSubmit={entrar} className="mt-7 space-y-5" noValidate>
+      {USA_MOCKS && (
+        <fieldset>
+          <legend className="mb-2.5 text-[0.92rem] font-semibold text-tinta-suave">Cuentas de demostración</legend>
+          <div className="grid gap-2.5" role="radiogroup">
+            {DEMO.map((d) => {
+              const on = correo === d.correo;
+              return (
+                <button
+                  key={d.correo}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setCorreo(d.correo)}
+                  className={cn(
+                    "flex min-h-14 w-full items-center gap-3 rounded-[14px] border bg-superficie px-4 py-2.5 text-left transition-[border-color,box-shadow] duration-150",
+                    on ? "border-primario shadow-[0_0_0_3px_rgba(40,54,89,.14)]" : "border-linea hover:border-linea-fuerte"
                   )}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+                >
+                  <span className={cn("h-4 w-4 shrink-0 rounded-full border-2", on ? "border-[5px] border-primario" : "border-linea-fuerte")} aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block font-semibold leading-snug">{d.titulo}</span>
+                    <span className="block text-[0.85rem] text-tinta-tenue">{d.detalle}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
 
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <Etiqueta htmlFor="correo">Correo</Etiqueta>
-          <Entrada id="correo" type="email" autoComplete="username" value={correo} onChange={(e) => setCorreo(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Etiqueta htmlFor="clave">Contraseña</Etiqueta>
-          <Entrada id="clave" type="password" autoComplete="current-password" defaultValue="demostracion" />
-        </div>
+      <div className="space-y-1.5">
+        <Etiqueta htmlFor="correo">Correo</Etiqueta>
+        <Entrada id="correo" type="email" autoComplete="username" value={correo} onChange={(e) => setCorreo(e.target.value)} required />
+      </div>
+      <div className="space-y-1.5">
+        <Etiqueta htmlFor="clave">Contraseña</Etiqueta>
+        <Entrada id="clave" type="password" autoComplete="current-password" value={clave} onChange={(e) => setClave(e.target.value)} required />
       </div>
 
+      <MensajeError>{error}</MensajeError>
+
       <Boton type="submit" tamaño="lg" className="w-full" disabled={entrando}>
-        {entrando ? <Loader2 className="animate-spin" /> : null}
+        {entrando && <LoaderCircle className="animate-spin" />}
         {entrando ? "Entrando…" : "Entrar"}
-        {!entrando && <ArrowRight />}
       </Boton>
+
+      <p className="pt-2 text-center text-tinta-suave">
+        ¿Eres paciente?{" "}
+        <Link href="/mi/entrar" className="inline-flex min-h-11 items-center gap-1 font-semibold text-primario underline-offset-4 hover:underline">
+          Entra con tu DPI y PIN <ArrowRight className="h-4 w-4" />
+        </Link>
+      </p>
     </form>
   );
 }

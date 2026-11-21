@@ -7,6 +7,11 @@ export function cn(...inputs: ClassValue[]) {
 
 export const ZONA_GT = "America/Guatemala";
 
+/** Fecha y hora ISO 8601 con zona -06:00 (convención del contrato). */
+export function isoGuatemala(ms: number = Date.now()): string {
+  return new Date(ms - 6 * 3_600_000).toISOString().slice(0, 19) + "-06:00";
+}
+
 /** Solo dígitos del DPI/CUI. */
 export function soloDigitos(v: string | null | undefined): string {
   return (v ?? "").replace(/\D/g, "");
@@ -17,6 +22,22 @@ export function formatearDPI(v: string | null | undefined): string {
   const d = soloDigitos(v).slice(0, 13);
   const partes = [d.slice(0, 4), d.slice(4, 9), d.slice(9, 13)].filter(Boolean);
   return partes.join(" ");
+}
+
+/** DPI con espacios para leerlo; un identificador TMP- se muestra tal cual. */
+export function mostrarIdentificador(v: string | null | undefined): string {
+  if (!v) return "—";
+  return v.startsWith("TMP-") ? v : formatearDPI(v);
+}
+
+/** "21 nov 2026, 10:42" en hora de Guatemala. */
+export function fechaHora(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const f = new Date(iso);
+  if (Number.isNaN(f.getTime())) return iso;
+  const dia = new Intl.DateTimeFormat("en-CA", { timeZone: ZONA_GT, year: "numeric", month: "2-digit", day: "2-digit" }).format(f);
+  const hora = new Intl.DateTimeFormat("es-GT", { timeZone: ZONA_GT, hour: "2-digit", minute: "2-digit", hour12: false }).format(f);
+  return `${fechaCorta(dia)}, ${hora}`;
 }
 
 export function dpiValido(v: string | null | undefined): boolean {

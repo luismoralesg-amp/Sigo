@@ -1,23 +1,28 @@
 "use client";
 /**
- * Cola de fichas confirmadas sin señal.
- * En la versión de interfaz guarda solo los datos de la ficha (localStorage);
- * al conectar el backend las fotos irán en IndexedDB y se subirán con POST /api/confirmar.
+ * Cola de fotos sin señal (regla 10 del contrato, P-04).
+ * Guarda en el celular (IndexedDB) las fotos, el dpi y el client_id, y reintenta POST /fichas/foto
+ * cuando vuelve la señal. Un client_id repetido devuelve la ficha que ya existe, así que reintentar es seguro.
+ * Si IndexedDB no está disponible, la cola vive en memoria mientras la página siga abierta.
  */
 import { useEffect, useSyncExternalStore } from "react";
+import { api } from "@/lib/api/cliente";
+import { aErrorApi } from "@/lib/api/errores";
 
 export interface Pendiente {
-  id: string;
-  nombre: string;
-  fecha: string;
-  creada: string;
+  client_id: string;
+  dpi: string;
+  capturada_en: string;
+  imagenes: Blob[];
 }
 
-type Estado = { pendientes: Pendiente[]; enLinea: boolean; subiendo: number; subidas: number };
+type Estado = { pendientes: Array<Omit<Pendiente, "imagenes"> & { paginas: number }>; enLinea: boolean; subiendo: number; subidas: number };
 
-const CLAVE = "sigo:pendientes";
+const BASE = "sigo";
+const ALMACEN = "fotos-pendientes";
 let estado: Estado = { pendientes: [], enLinea: true, subiendo: 0, subidas: 0 };
 const oyentes = new Set<() => void>();
+const enMemoria = new Map<string, Pendiente>();
 let iniciado = false;
 
 function emitir(cambios: Partial<Estado>) {
@@ -25,52 +30,90 @@ function emitir(cambios: Partial<Estado>) {
   oyentes.forEach((o) => o());
 }
 
-function guardar(lista: Pendiente[]) {
-  try {
-    localStorage.setItem(CLAVE, JSON.stringify(lista));
-  } catch {
-    /* sin almacenamiento: la cola vive solo en memoria */
-  }
+function abrir(): Promise<IDBDatabase | null> {
+  return new Promise((resolve) => {
+    try {
+      const r = indexedDB.open(BASE, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(ALMACEN, { keyPath: "client_id" });
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
 }
 
-function subirTodo() {
-  const n = estado.pendientes.length;
-  if (!n || estado.subiendo) return;
-  emitir({ subiendo: n });
-  // Simulación de subida: en producción, una petición por ficha con su foto.
-  setTimeout(() => {
-    guardar([]);
-    emitir({ pendientes: [], subiendo: 0, subidas: n });
-    setTimeout(() => emitir({ subidas: 0 }), 3500);
-  }, 2200);
+async function operar<T>(modo: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T | null> {
+  const db = await abrir();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    const tx = db.transaction(ALMACEN, modo);
+    const req = fn(tx.objectStore(ALMACEN));
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+
+async function leerTodos(): Promise<Pendiente[]> {
+  const desdeDB = await operar<Pendiente[]>("readonly", (s) => s.getAll() as IDBRequest<Pendiente[]>);
+  return desdeDB ?? [...enMemoria.values()];
+}
+
+async function refrescar() {
+  const lista = await leerTodos();
+  emitir({ pendientes: lista.map(({ imagenes, ...p }) => ({ ...p, paginas: imagenes.length })) });
+}
+
+async function quitar(clientId: string) {
+  enMemoria.delete(clientId);
+  await operar("readwrite", (s) => s.delete(clientId));
+}
+
+let subiendo = false;
+async function subirTodo() {
+  if (subiendo) return;
+  const lista = await leerTodos();
+  if (!lista.length) return;
+  subiendo = true;
+  emitir({ subiendo: lista.length });
+  let ok = 0;
+  for (const p of lista) {
+    try {
+      await api.subirFoto(p);
+      await quitar(p.client_id);
+      ok += 1;
+    } catch (e) {
+      // Sin señal otra vez: se queda en la cola. Otro error (p. ej. 403): también se queda, para revisarlo a mano.
+      if (aErrorApi(e).codigo === "sin_senal") break;
+    }
+  }
+  subiendo = false;
+  await refrescar();
+  emitir({ subiendo: 0, subidas: ok });
+  if (ok) setTimeout(() => emitir({ subidas: 0 }), 4000);
 }
 
 function iniciar() {
   if (iniciado || typeof window === "undefined") return;
   iniciado = true;
-  let lista: Pendiente[] = [];
-  try {
-    lista = JSON.parse(localStorage.getItem(CLAVE) ?? "[]");
-  } catch {
-    lista = [];
-  }
-  emitir({ pendientes: lista, enLinea: navigator.onLine });
+  emitir({ enLinea: navigator.onLine });
+  void refrescar();
   window.addEventListener("offline", () => emitir({ enLinea: false }));
   window.addEventListener("online", () => {
     emitir({ enLinea: true });
-    subirTodo();
+    void subirTodo();
   });
-  if (navigator.onLine && lista.length) subirTodo();
+  if (navigator.onLine) void subirTodo();
 }
 
-export function agregarPendiente(p: Omit<Pendiente, "id" | "creada">) {
-  const lista = [...estado.pendientes, { ...p, id: crypto.randomUUID(), creada: new Date().toISOString() }];
-  guardar(lista);
-  emitir({ pendientes: lista });
+export async function guardarPendiente(p: Pendiente) {
+  enMemoria.set(p.client_id, p);
+  await operar("readwrite", (s) => s.put(p));
+  await refrescar();
 }
 
 export function estaEnLinea() {
-  return estado.enLinea;
+  return typeof navigator === "undefined" ? true : navigator.onLine;
 }
 
 const SERVIDOR: Estado = { pendientes: [], enLinea: true, subiendo: 0, subidas: 0 };

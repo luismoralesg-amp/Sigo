@@ -4,25 +4,26 @@ import { CloudOff, CloudUpload, CircleCheck } from "lucide-react";
 import { useConexion } from "@/lib/pendientes";
 import { cn } from "@/lib/utils";
 
-/** Franja bajo el encabezado: sin señal, fichas pendientes y subida automática. */
+/** Franja bajo el encabezado: sin señal, fotos pendientes y subida automática. */
 export function IndicadorConexion() {
   const { enLinea, pendientes, subiendo, subidas } = useConexion();
   const n = pendientes.length;
+  const fotos = (k: number) => `${k} ${k === 1 ? "ficha" : "fichas"}`;
 
   let contenido: { tono: "revisar" | "primario" | "confirmado"; icono: React.ReactNode; texto: string; detalle?: string } | null = null;
   if (!enLinea) {
     contenido = {
       tono: "revisar",
       icono: <CloudOff />,
-      texto: n ? `Sin señal · ${n} ${n === 1 ? "ficha pendiente" : "fichas pendientes"} de subir` : "Sin señal",
-      detalle: n ? "Se subirán solas cuando vuelva la señal." : "Puedes seguir digitalizando; se guarda en el celular.",
+      texto: n ? `Sin señal. ${fotos(n)} esperando en el celular` : "Sin señal",
+      detalle: n ? "Se suben solas cuando vuelva la señal." : "Lo que fotografíes se guarda en el celular.",
     };
   } else if (subiendo) {
-    contenido = { tono: "primario", icono: <CloudUpload className="animate-bounce" />, texto: `Subiendo ${subiendo} ${subiendo === 1 ? "ficha" : "fichas"}…` };
+    contenido = { tono: "primario", icono: <CloudUpload />, texto: `Subiendo ${fotos(subiendo)}…` };
   } else if (subidas) {
-    contenido = { tono: "confirmado", icono: <CircleCheck />, texto: `${subidas} ${subidas === 1 ? "ficha subida" : "fichas subidas"} al expediente` };
+    contenido = { tono: "confirmado", icono: <CircleCheck />, texto: `${fotos(subidas)} ${subidas === 1 ? "subida" : "subidas"}. Ya se pueden revisar.` };
   } else if (n) {
-    contenido = { tono: "revisar", icono: <CloudUpload />, texto: `${n} ${n === 1 ? "ficha pendiente" : "fichas pendientes"} de subir` };
+    contenido = { tono: "revisar", icono: <CloudUpload />, texto: `${fotos(n)} sin subir` };
   }
 
   return (
@@ -33,7 +34,7 @@ export function IndicadorConexion() {
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.22 }}
+          transition={{ duration: 0.2 }}
           role="status"
           aria-live="polite"
           className={cn(

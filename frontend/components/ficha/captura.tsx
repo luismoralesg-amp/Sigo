@@ -11,7 +11,32 @@ export interface Foto {
   archivo: File;
 }
 
-export function Captura({ fotos, setFotos, onLeer }: { fotos: Foto[]; setFotos: (f: Foto[]) => void; onLeer: () => void }) {
+/** Compresión del contrato: 1600 px de lado y menos de 1.5 MB por foto. `fuerte` se usa al reintentar tras un 413. */
+export async function comprimir(f: File | Blob, fuerte = false): Promise<File> {
+  const c = await imageCompression(f instanceof File ? f : new File([f], "foto.jpg", { type: f.type || "image/jpeg" }), {
+    maxWidthOrHeight: fuerte ? 1280 : 1600,
+    maxSizeMB: fuerte ? 0.8 : 1.4,
+    useWebWorker: false,
+    fileType: "image/jpeg",
+  });
+  return new File([c], "pagina.jpg", { type: "image/jpeg" });
+}
+
+export function Captura({
+  fotos,
+  setFotos,
+  onLeer,
+  ocupado,
+  paciente,
+  errorSubida,
+}: {
+  fotos: Foto[];
+  setFotos: (f: Foto[]) => void;
+  onLeer: () => void;
+  ocupado: boolean;
+  paciente: string;
+  errorSubida?: string | null;
+}) {
   const input = useRef<HTMLInputElement>(null);
   const [preparando, setPreparando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,8 +52,8 @@ export function Captura({ fotos, setFotos, onLeer }: { fotos: Foto[]; setFotos: 
           continue;
         }
         // Comprimir en el celular: se sube más rápido con poca señal
-        const comprimida = await imageCompression(f, { maxWidthOrHeight: 1800, maxSizeMB: 0.8, useWebWorker: false, fileType: "image/jpeg" });
-        nuevas.push({ id: crypto.randomUUID(), url: URL.createObjectURL(comprimida), archivo: new File([comprimida], f.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }) });
+        const comprimida = await comprimir(f);
+        nuevas.push({ id: crypto.randomUUID(), url: URL.createObjectURL(comprimida), archivo: comprimida });
       }
       setFotos([...fotos, ...nuevas]);
     } catch {
@@ -40,19 +65,25 @@ export function Captura({ fotos, setFotos, onLeer }: { fotos: Foto[]; setFotos: 
 
   async function usarEjemplo() {
     setPreparando(true);
-    const r = await fetch("/demo/ficha-rosa-2024.jpg");
-    const b = await r.blob();
-    setPreparando(false);
-    await agregar([new File([b], "ficha-rosa-2024.jpg", { type: "image/jpeg" })]);
+    try {
+      const r = await fetch("/demo/ficha-rosa-2025.jpg");
+      const b = await r.blob();
+      await agregar([new File([b], "ficha-rosa-2025.jpg", { type: "image/jpeg" })]);
+    } catch {
+      setError("No se pudo cargar la ficha de ejemplo.");
+    } finally {
+      setPreparando(false);
+    }
   }
 
   const quitar = (id: string) => setFotos(fotos.filter((f) => f.id !== id));
 
   return (
     <div className="pb-28">
-      <p className="ceja">Paso 1 de 2 · Foto</p>
-      <h1 className="mt-4 text-[2rem] leading-tight sm:text-[2.3rem]">Digitalizar ficha en papel</h1>
-      <p className="mt-2 text-tinta-suave">Toma una foto de la ficha completa. Si tiene varias páginas, agrega una foto por página.</p>
+      <h1 className="text-[2rem] leading-tight text-primario sm:text-[2.3rem]">Escanear ficha</h1>
+      <p className="mt-2 text-tinta-suave">
+        Para <span className="font-semibold text-tinta">{paciente}</span>. Toma una foto de la ficha completa; si tiene varias páginas, una foto por página.
+      </p>
 
       <input
         ref={input}
@@ -114,9 +145,9 @@ export function Captura({ fotos, setFotos, onLeer }: { fotos: Foto[]; setFotos: 
           <LoaderCircle className="h-5 w-5 animate-spin text-primario" /> Preparando la foto…
         </p>
       )}
-      {error && (
+      {(error || errorSubida) && (
         <p className="mt-4 rounded-[12px] bg-alerta-fondo px-4 py-3 text-alerta" role="alert">
-          {error}
+          {error ?? errorSubida}
         </p>
       )}
 
@@ -127,7 +158,7 @@ export function Captura({ fotos, setFotos, onLeer }: { fotos: Foto[]; setFotos: 
 
       {fotos.length === 0 && (
         <button onClick={usarEjemplo} className="mt-4 flex min-h-11 items-center gap-2 rounded-[12px] px-2 font-semibold text-primario hover:bg-primario-suave">
-          <ScrollText className="h-5 w-5" /> Probar con la ficha de ejemplo de Rosa
+          <ScrollText className="h-5 w-5" /> Probar con la ficha de ejemplo
         </button>
       )}
 
@@ -135,8 +166,8 @@ export function Captura({ fotos, setFotos, onLeer }: { fotos: Foto[]; setFotos: 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-linea bg-superficie/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <p className="hidden flex-1 text-tinta-suave sm:block">{fotos.length ? `${fotos.length} ${fotos.length === 1 ? "página lista" : "páginas listas"}` : "Agrega al menos una foto"}</p>
-          <Boton tamaño="xl" className="w-full sm:w-auto" disabled={!fotos.length || preparando} onClick={onLeer}>
-            <ScanLine /> Leer ficha
+          <Boton tamaño="xl" className="w-full sm:w-auto" disabled={!fotos.length || preparando || ocupado} onClick={onLeer}>
+            {ocupado ? <LoaderCircle className="animate-spin" /> : <ScanLine />} {ocupado ? "Subiendo…" : "Leer ficha"}
           </Boton>
         </div>
       </div>
