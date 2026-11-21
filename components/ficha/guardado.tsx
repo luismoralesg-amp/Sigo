@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Check, Camera, House, FileImage, TriangleAlert, CalendarPlus } from "lucide-react";
+import { Check, Camera, House, FileImage, TriangleAlert, CalendarPlus, CloudOff } from "lucide-react";
 import { Boton } from "@/components/ui/button";
 import { fechaCorta, primerNombre } from "@/lib/utils";
 
 /** La ficha "se guarda" dentro del expediente. */
-export function Guardado({ foto, nombre, fecha, alergias, onOtra }: { foto: string; nombre: string; fecha: string; alergias: string[]; onOtra: () => void }) {
+export function Guardado({ foto, nombre, fecha, alergias, sinSenal = false, onOtra }: { foto: string; nombre: string; fecha: string; alergias: string[]; sinSenal?: boolean; onOtra: () => void }) {
   return (
     <div className="mx-auto max-w-lg pt-4 text-center sm:pt-10">
       <div className="relative mx-auto h-56 w-60" aria-hidden="true">
@@ -34,22 +34,24 @@ export function Guardado({ foto, nombre, fecha, alergias, onOtra }: { foto: stri
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: [0, 1.15, 1], opacity: 1 }}
           transition={{ delay: 1.05, duration: 0.3 }}
-          className="absolute -right-1 bottom-16 grid h-14 w-14 place-items-center rounded-full bg-confirmado text-white shadow-calida-lg ring-4 ring-papel"
+          className={sinSenal ? "absolute -right-1 bottom-16 grid h-14 w-14 place-items-center rounded-full bg-revisar text-tinta shadow-calida-lg ring-4 ring-papel" : "absolute -right-1 bottom-16 grid h-14 w-14 place-items-center rounded-full bg-confirmado text-white shadow-calida-lg ring-4 ring-papel"}
         >
-          <Check className="h-7 w-7" strokeWidth={3} />
+          {sinSenal ? <CloudOff className="h-7 w-7" /> : <Check className="h-7 w-7" strokeWidth={3} />}
         </motion.span>
       </div>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2, duration: 0.25 }}>
         <h1 className="mt-8 text-[2rem] font-semibold leading-tight" role="status">
-          Expediente de {primerNombre(nombre)} actualizado
+          {sinSenal ? "Ficha guardada en el celular" : `Expediente de ${primerNombre(nombre)} actualizado`}
         </h1>
-        <p className="mt-2 text-tinta-suave">Cualquier centro autorizado ya puede consultarlo con su DPI.</p>
+        <p className="mt-2 text-tinta-suave">
+          {sinSenal ? `No hay señal. La ficha de ${primerNombre(nombre)} se subirá sola cuando vuelva.` : "Cualquier centro autorizado ya puede consultarlo con su DPI."}
+        </p>
 
         <ul className="mx-auto mt-6 max-w-sm space-y-2.5 text-left">
-          <Item icono={<CalendarPlus />}>Consulta del {fechaCorta(fecha)} agregada</Item>
+          <Item icono={<CalendarPlus />}>Consulta del {fechaCorta(fecha)} {sinSenal ? "lista para subir" : "agregada"}</Item>
           {alergias.length > 0 && <Item icono={<TriangleAlert />} alerta>Alergia confirmada: {alergias.join(", ")}</Item>}
-          <Item icono={<FileImage />}>Foto original guardada junto al dato</Item>
+          <Item icono={<FileImage />}>{sinSenal ? "Foto original guardada en el celular" : "Foto original guardada junto al dato"}</Item>
         </ul>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2">

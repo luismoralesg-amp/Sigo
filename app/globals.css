@@ -190,3 +190,10 @@ body {
   }
   .ceja-clara { color: #e3bd96; }
 }
+
+/* Imprimir solo el carné */
+@media print {
+  body * { visibility: hidden !important; }
+  .imprimible, .imprimible * { visibility: visible !important; }
+  .imprimible { position: fixed; left: 50%; top: 24px; transform: translateX(-50%); box-shadow: none !important; }
+}

@@ -3,6 +3,7 @@ import { Building2, Hospital, LogOut } from "lucide-react";
 import { Logo } from "@/components/marca/logo";
 import { USUARIOS } from "@/datos/demo";
 import { cn } from "@/lib/utils";
+import { IndicadorConexion } from "@/components/ficha/indicador-conexion";
 
 export function Shell({ rol, children, ancho = "normal" }: { rol: "puesto" | "hospital"; children: React.ReactNode; ancho?: "normal" | "amplio" }) {
   const u = USUARIOS[rol];
@@ -30,6 +31,7 @@ export function Shell({ rol, children, ancho = "normal" }: { rol: "puesto" | "ho
           </div>
         </div>
       </header>
+      {rol === "puesto" && <IndicadorConexion />}
       <main className={cn("mx-auto px-4 pb-16 pt-6 sm:px-6 sm:pt-10", ancho === "amplio" ? "max-w-6xl" : "max-w-3xl")}>{children}</main>
     </div>
   );

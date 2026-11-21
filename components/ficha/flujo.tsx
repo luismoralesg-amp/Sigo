@@ -10,6 +10,7 @@ import { Guardado } from "./guardado";
 import { aCampos, listaDe, valorDe, type EstadoCampo } from "./campos";
 import type { LecturaFicha } from "@/lib/ia";
 import { LECTURA_RESPALDO_ROSA } from "@/datos/lectura-respaldo";
+import { agregarPendiente, estaEnLinea } from "@/lib/pendientes";
 
 type Paso = "captura" | "leyendo" | "revision" | "listo";
 
@@ -28,6 +29,7 @@ export function FlujoDigitalizar() {
   const [lectura, setLectura] = useState<LecturaFicha | null>(null);
   const [campos, setCampos] = useState<EstadoCampo[]>([]);
   const [eleccion, setEleccion] = useState<string | null>(null);
+  const [sinSenal, setSinSenal] = useState(false);
 
   async function iniciarLectura() {
     setLectura(null);
@@ -42,6 +44,15 @@ export function FlujoDigitalizar() {
     setPaso("revision");
     window.scrollTo({ top: 0 });
   }, []);
+
+  function confirmar() {
+    const offline = !estaEnLinea();
+    // Sin señal: la ficha confirmada queda en el celular y se sube sola después.
+    if (offline) agregarPendiente({ nombre: valorDe(campos, "nombre"), fecha: valorDe(campos, "fecha") });
+    setSinSenal(offline);
+    setPaso("listo");
+    window.scrollTo({ top: 0 });
+  }
 
   function reiniciar() {
     setFotos([]);
@@ -72,10 +83,10 @@ export function FlujoDigitalizar() {
           {paso === "captura" && <Captura fotos={fotos} setFotos={setFotos} onLeer={iniciarLectura} />}
           {paso === "leyendo" && fotos[0] && <Escaneo foto={fotos[0].url} lectura={lectura} onTerminar={terminarEscaneo} />}
           {paso === "revision" && (
-            <Revision fotos={fotos.map((f) => f.url)} campos={campos} setCampos={setCampos} eleccion={eleccion} setEleccion={setEleccion} onConfirmar={() => { setPaso("listo"); window.scrollTo({ top: 0 }); }} />
+            <Revision fotos={fotos.map((f) => f.url)} campos={campos} setCampos={setCampos} eleccion={eleccion} setEleccion={setEleccion} onConfirmar={confirmar} />
           )}
           {paso === "listo" && fotos[0] && (
-            <Guardado foto={fotos[0].url} nombre={valorDe(campos, "nombre")} fecha={valorDe(campos, "fecha")} alergias={listaDe(campos, "alergias")} onOtra={reiniciar} />
+            <Guardado foto={fotos[0].url} nombre={valorDe(campos, "nombre")} fecha={valorDe(campos, "fecha")} alergias={listaDe(campos, "alergias")} sinSenal={sinSenal} onOtra={reiniciar} />
           )}
         </motion.div>
       </AnimatePresence>

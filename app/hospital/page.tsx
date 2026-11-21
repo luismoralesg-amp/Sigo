@@ -33,8 +33,9 @@ export default function PaginaHospital() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{p.nombre}</p>
                     <p className="num truncate font-mono text-[0.82rem] text-tinta-tenue">{formatearDPI(p.dpi_cui)}</p>
+                    <p className="num text-[0.8rem] text-tinta-tenue sm:hidden">{momentoBitacora(a.fecha_hora)}</p>
                   </div>
-                  <span className="num shrink-0 text-[0.82rem] text-tinta-tenue">{momentoBitacora(a.fecha_hora)}</span>
+                  <span className="num hidden shrink-0 text-[0.82rem] text-tinta-tenue sm:inline">{momentoBitacora(a.fecha_hora)}</span>
                   <ChevronRight className="h-5 w-5 shrink-0 text-tinta-tenue" />
                 </Link>
               </li>

@@ -44,8 +44,8 @@ export function LineaTiempo({ consultas }: { consultas: Consulta[] }) {
 
 function InsigniaFuente({ c }: { c: Consulta }) {
   const año = c.fecha.slice(0, 4);
-  if (c.origen === "foto") return <Insignia tono="kraft"><ScrollText /> Rescatado de papel · {año}</Insignia>;
-  if (c.origen === "sistema_antiguo") return <Insignia tono="kraft"><Database /> Rescatado de sistema antiguo · {c.fuente_detalle ?? "Excel"}</Insignia>;
+  if (c.origen === "foto") return <Insignia tono="kraft"><ScrollText /> <span><span className="hidden sm:inline">Rescatado de papel</span><span className="sm:hidden">Papel</span> · {año}</span></Insignia>;
+  if (c.origen === "sistema_antiguo") return <Insignia tono="kraft"><Database /> <span><span className="hidden sm:inline">Rescatado de sistema antiguo</span><span className="sm:hidden">Sistema antiguo</span> · {c.fuente_detalle ?? "Excel"}</span></Insignia>;
   return <Insignia tono="primario"><MonitorCheck /> Digital</Insignia>;
 }
 

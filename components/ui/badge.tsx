@@ -2,7 +2,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const insignia = cva("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.78rem] font-semibold leading-none [&_svg]:size-3.5", {
+const insignia = cva("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[0.78rem] font-semibold leading-none [&_svg]:size-3.5", {
   variants: {
     tono: {
       kraft: "border border-kraft-borde bg-kraft text-kraft-tinta",

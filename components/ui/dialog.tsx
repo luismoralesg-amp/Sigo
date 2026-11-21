@@ -25,7 +25,7 @@ export function DialogoContenido({ className, children, ...props }: React.Compon
           <X className="h-5 w-5" />
         </D.Close>
       </D.Content>
-      <style>{`@keyframes aparecer{from{opacity:0}to{opacity:1}}@keyframes subir{from{opacity:0;transform:translate(-50%,-46%) scale(.98)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}`}</style>
+      <style>{`@keyframes aparecer{from{opacity:0}to{opacity:1}}@keyframes subir{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}`}</style>
     </D.Portal>
   );
 }

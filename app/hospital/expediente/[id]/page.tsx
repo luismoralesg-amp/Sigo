@@ -6,6 +6,7 @@ import { Shell } from "@/components/shell";
 import { AlertaClinica } from "@/components/expediente/alerta";
 import { LineaTiempo } from "@/components/expediente/linea-tiempo";
 import { Bitacora } from "@/components/expediente/bitacora";
+import { CarneQR } from "@/components/expediente/carne-qr";
 import { expediente, medicamentosActuales, USUARIOS, type AccesoDemo } from "@/datos/demo";
 import { edadTexto, fechaCorta, formatearDPI } from "@/lib/utils";
 
@@ -57,6 +58,9 @@ export default async function PaginaExpediente({ params }: { params: Promise<{ i
             )}
             <span className="num text-[0.9rem]">Nac. {fechaCorta(p.fecha_nacimiento)}</span>
           </div>
+          <div className="mt-4">
+            <CarneQR paciente={p} />
+          </div>
         </div>
 
         {/* De dónde viene este expediente */}
@@ -83,12 +87,12 @@ export default async function PaginaExpediente({ params }: { params: Promise<{ i
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <section aria-labelledby="titulo-historial">
+        <section aria-labelledby="titulo-historial" className="min-w-0">
           <h2 id="titulo-historial" className="mb-4 text-[1.45rem] font-semibold">Historial de consultas</h2>
           <LineaTiempo consultas={consultas} />
         </section>
 
-        <aside className="space-y-5 lg:pt-[3.1rem]">
+        <aside className="min-w-0 space-y-5 lg:pt-[3.1rem]">
           <Bitacora accesos={accesos} nuevoId="ahora" />
           {vacunas.length > 0 && (
             <section className="rounded-[18px] border border-linea bg-superficie shadow-calida">
