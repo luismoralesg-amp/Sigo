@@ -9,14 +9,15 @@ import path from "node:path";
 const SALIDA = path.join(process.cwd(), "public/demo");
 fs.mkdirSync(SALIDA, { recursive: true });
 
-type Linea = { etiqueta: string; valor: string; x?: number; ancho?: number; rojo?: boolean; tam?: number };
+/** `borroso`: tinta corrida o letra difícil; la IA lo debería leer con confianza "baja". */
+type Linea = { etiqueta: string; valor: string; x?: number; ancho?: number; rojo?: boolean; tam?: number; borroso?: boolean };
 type Fila = Linea[];
 interface Ficha {
   archivo: string;
   titulo: string;
   subtitulo?: string;
   numero: string;
-  filas: Array<Fila | { seccion: string } | { parrafo: string; etiqueta: string; lineas?: number; rojo?: boolean }>;
+  filas: Array<Fila | { seccion: string } | { parrafo: string; etiqueta: string; lineas?: number; rojo?: boolean; borroso?: boolean }>;
   firma: string;
   semilla: number;
   rotacion: number;
@@ -35,7 +36,12 @@ function render(f: Ficha): string {
   const W = 1100, H = 1500;
   const r = azar(f.semilla);
   const tinta = f.tinta ?? "#1f3a8a";
-  const mano = (x: number, y: number, t: string, tam = 34, color = tinta) => {
+  const mano = (x: number, y: number, t: string, tam = 34, color = tinta, borroso = false): string => {
+    if (borroso) {
+      // Tinta corrida: el trazo se difumina y queda una mancha encima.
+      const ancho = t.length * tam * 0.5;
+      return `<g filter="url(#borron)" opacity=".62">${mano(x, y, t, tam, color)}</g><ellipse cx="${(x + ancho * 0.55).toFixed(1)}" cy="${(y - tam * 0.3).toFixed(1)}" rx="${(tam * 0.9).toFixed(1)}" ry="${(tam * 0.45).toFixed(1)}" fill="${color}" opacity=".16" filter="url(#borron)"/>`;
+    }
     // cada palabra con pequeña rotación y desplazamiento, como letra a mano
     let cx = x;
     return t
@@ -79,7 +85,7 @@ function render(f: Ficha): string {
       }
       lineasTxt.push(linea.trim());
       for (const t of lineasTxt) {
-        partes.push(mano(li === 0 ? 80 + fila.etiqueta.length * 11.6 + 10 : 90, y + 8 + li * 50, t, 31, fila.rojo ? "#b3261e" : tinta));
+        partes.push(mano(li === 0 ? 80 + fila.etiqueta.length * 11.6 + 10 : 90, y + 8 + li * 50, t, 31, fila.rojo ? "#b3261e" : tinta, fila.borroso));
         li++;
       }
       y += Math.max(lineas, lineasTxt.length) * 50 + 30;
@@ -92,7 +98,7 @@ function render(f: Ficha): string {
       partes.push(impreso(xx, y, c.etiqueta));
       const xl = xx + c.etiqueta.length * 11.6 + 8;
       partes.push(`<line x1="${xl}" y1="${y + 6}" x2="${xx + ancho - 20}" y2="${y + 6}" stroke="#2b2b2b" stroke-width="1" opacity=".45"/>`);
-      partes.push(mano(xl + 6, y - 4, c.valor, c.tam ?? 33, c.rojo ? "#b3261e" : tinta));
+      partes.push(mano(xl + 6, y - 4, c.valor, c.tam ?? 33, c.rojo ? "#b3261e" : tinta, c.borroso));
       x = xx + ancho;
     }
     y += 70;
@@ -123,6 +129,7 @@ function render(f: Ficha): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="1700" viewBox="-100 -100 1300 1700">
     <defs>
       <filter id="grano"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" seed="${f.semilla}"/><feColorMatrix values="0 0 0 0 .45  0 0 0 0 .36  0 0 0 0 .2  0 0 0 .35 0"/></filter>
+      <filter id="borron" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="1.6"/></filter>
       <filter id="sombra" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="6" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".45"/></filter>
       <linearGradient id="amarillento" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".7" stop-color="#c9a96a" stop-opacity=".05"/><stop offset="1" stop-color="#8a6a33" stop-opacity=".22"/></linearGradient>
       <radialGradient id="luz" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#000" stop-opacity=".38"/></radialGradient>
@@ -134,112 +141,103 @@ function render(f: Ficha): string {
   </svg>`;
 }
 
-const CENTRO = "PUESTO DE SALUD ALDEA CHUICACÁ";
-const SUB = "Totonicapán · Consulta externa";
+// Historia del demo (contrato v3, P-02): doña Rosa Batz Tzoc, DPI 2547 89633 0801, Chichicastenango (Quiché),
+// alérgica a la penicilina, y su hijo Diego, sin DPI (TMP-). Todo inventado.
+const CENTRO = "PUESTO DE SALUD DE CHICHICASTENANGO";
+const SUB = "Chichicastenango, Quiché · Consulta externa";
+const ROSA = [
+  [{ etiqueta: "Nombre:", valor: "Rosa Batz Tzoc" }],
+  // Doble espacio entre grupos: la letra a mano es más ancha que lo que estima el generador.
+  [{ etiqueta: "DPI/CUI:", valor: "2547  89633  0801" }],
+] as Fila[];
 
 const FICHAS: Ficha[] = [
   {
-    archivo: "ficha-rosa-2024.jpg",
+    // con-002 y la ficha f_88 del contrato. Dato dudoso: "24 semanas" (diagnóstico con confianza baja).
+    archivo: "ficha-rosa-2025.jpg",
+    titulo: CENTRO,
+    subtitulo: "Control prenatal",
+    numero: "1147",
+    semilla: 11,
+    rotacion: -1.4,
+    mancha: true,
+    firma: "Enf. A. Tzul",
+    filas: [
+      [{ etiqueta: "Fecha:", valor: "14/08/2025", ancho: 420 }, { etiqueta: "Sexo:", valor: "F", ancho: 200 }, { etiqueta: "F. nac:", valor: "12/3/84", ancho: 320 }],
+      ...ROSA,
+      [{ etiqueta: "Comunidad:", valor: "Chichicastenango" }],
+      { seccion: "ANTECEDENTES" },
+      [{ etiqueta: "Alergias:", valor: "PENICILINA !!", rojo: true }],
+      [{ etiqueta: "Ant. patológicos:", valor: "Ninguno" }],
+      { seccion: "CONSULTA" },
+      { etiqueta: "Motivo:", parrafo: "Control prenatal", lineas: 1 },
+      { etiqueta: "Dx:", parrafo: "Embarazo 24 semanas", lineas: 1, borroso: true },
+      { etiqueta: "Tx:", parrafo: "Sulfato ferroso 300 mg c/día", lineas: 2 },
+      [{ etiqueta: "Vacunas:", valor: "Td" }],
+    ],
+  },
+  {
+    // con-001. La fecha está corrida: la primera lectura dijo 20/10 y se corrigió a 02/10 (versión 2).
+    archivo: "ficha-rosa-2026.jpg",
     titulo: CENTRO,
     subtitulo: SUB,
-    numero: "0847",
-    semilla: 11,
-    rotacion: -1.6,
-    mancha: true,
-    firma: "Enf. M. Pú",
+    numero: "1389",
+    semilla: 23,
+    rotacion: 1.1,
+    firma: "Enf. A. Tzul",
     filas: [
-      [{ etiqueta: "Fecha:", valor: "14/08/2024", ancho: 420 }, { etiqueta: "Sexo:", valor: "F", ancho: 200 }, { etiqueta: "F. nac:", valor: "15/4/68", ancho: 320 }],
-      [{ etiqueta: "Nombre:", valor: "Rosa Elena Tzul Batz" }],
-      [{ etiqueta: "DPI/CUI:", valor: "2456 78901 0801" }],
-      [{ etiqueta: "Comunidad:", valor: "Aldea Chuicacá, Totonicapán" }],
+      [{ etiqueta: "Fecha:", valor: "02/10/2026", ancho: 420, borroso: true }, { etiqueta: "Sexo:", valor: "F", ancho: 200 }, { etiqueta: "F. nac:", valor: "12/3/84", ancho: 320 }],
+      ...ROSA,
+      [{ etiqueta: "Comunidad:", valor: "Chichicastenango" }],
       { seccion: "ANTECEDENTES" },
-      [{ etiqueta: "Alergias:", valor: "PENICILINA (PNC) !!", rojo: true }],
-      [{ etiqueta: "Ant. patológicos:", valor: "HTA - enalapril" }],
+      [{ etiqueta: "Alergias:", valor: "PENICILINA", rojo: true }],
       { seccion: "CONSULTA" },
-      { etiqueta: "Motivo:", parrafo: "dolor de garganta y fiebre x 3 días", lineas: 1 },
+      { etiqueta: "Motivo:", parrafo: "dolor de garganta y fiebre", lineas: 1 },
       { etiqueta: "Dx:", parrafo: "Faringoamigdalitis aguda", lineas: 1 },
-      { etiqueta: "Tx:", parrafo: "Azitromicina 500 mg c/día x 3 días. Acetaminofén 500 mg c/8h si fiebre. Continuar enalapril 10 mg c/día", lineas: 3 },
+      { etiqueta: "Tx:", parrafo: "Azitromicina 500 mg c/día x 3 días (alérgica a PNC)", lineas: 2 },
       [{ etiqueta: "Vacunas:", valor: "" }],
     ],
   },
   {
-    archivo: "ficha-rosa-2012.jpg",
+    // con-003. Ficha vieja, letra más apurada.
+    archivo: "ficha-rosa-2019.jpg",
     titulo: CENTRO,
     subtitulo: SUB,
-    numero: "0112",
-    semilla: 23,
-    rotacion: 1.2,
+    numero: "0612",
+    semilla: 37,
+    rotacion: -0.9,
+    mancha: true,
     tinta: "#202020",
     firma: "Aux. E. Tax",
     filas: [
-      [{ etiqueta: "Fecha:", valor: "03/02/2012", ancho: 420 }, { etiqueta: "Sexo:", valor: "F", ancho: 200 }, { etiqueta: "Edad:", valor: "43 a", ancho: 320 }],
-      [{ etiqueta: "Nombre:", valor: "Rosa Tzul Batz" }],
-      [{ etiqueta: "Cédula:", valor: "" }],
-      [{ etiqueta: "Comunidad:", valor: "Chuicacá" }],
+      [{ etiqueta: "Fecha:", valor: "20/05/2019", ancho: 420 }, { etiqueta: "Sexo:", valor: "F", ancho: 200 }, { etiqueta: "Edad:", valor: "35 a", ancho: 320 }],
+      ...ROSA,
+      [{ etiqueta: "Comunidad:", valor: "Chichi" }],
       { seccion: "CONSULTA" },
-      { etiqueta: "Motivo:", parrafo: "dolor de cabeza y mareo", lineas: 1 },
-      [{ etiqueta: "P/A:", valor: "150/95", ancho: 400 }],
-      { etiqueta: "Dx:", parrafo: "Cefalea tensional. P/A elevada, control en 1 mes", lineas: 2 },
-      { etiqueta: "Tx:", parrafo: "Acetaminofén 500 mg c/8h x 3 días", lineas: 2 },
+      { etiqueta: "Motivo:", parrafo: "tos y fiebre", lineas: 1 },
+      { etiqueta: "Dx:", parrafo: "IRA", lineas: 1 },
+      { etiqueta: "Tx:", parrafo: "Acetaminofén 500 mg c/8h", lineas: 2 },
     ],
   },
   {
-    archivo: "ficha-rosa-2014.jpg",
-    titulo: CENTRO,
-    subtitulo: SUB,
-    numero: "0390",
-    semilla: 37,
-    rotacion: -0.8,
-    mancha: true,
-    firma: "Dr. J. Ixcoy",
-    filas: [
-      [{ etiqueta: "Fecha:", valor: "22/09/2014", ancho: 420 }, { etiqueta: "Sexo:", valor: "F", ancho: 200 }, { etiqueta: "F. nac:", valor: "15-04-1968", ancho: 320 }],
-      [{ etiqueta: "Nombre:", valor: "Rosa Elena Tzul" }],
-      [{ etiqueta: "DPI:", valor: "2456 78901 0801" }],
-      { seccion: "CONSULTA" },
-      { etiqueta: "Motivo:", parrafo: "ronchas y picazón en todo el cuerpo después de inyección", lineas: 2 },
-      { etiqueta: "Dx:", parrafo: "Reacción alérgica a penicilina benzatínica", lineas: 1, rojo: true },
-      { etiqueta: "Tx:", parrafo: "Loratadina 10 mg c/día x 5 días. NO volver a dar PNC", lineas: 2, rojo: true },
-      [{ etiqueta: "Alergias:", valor: "PENICILINA", rojo: true }],
-    ],
-  },
-  {
-    archivo: "ficha-juana-prenatal.jpg",
-    titulo: CENTRO,
-    subtitulo: "Control prenatal",
-    numero: "1021",
-    semilla: 41,
-    rotacion: 1.4,
-    firma: "Enf. M. Pú",
-    filas: [
-      [{ etiqueta: "Fecha:", valor: "10/06/2026", ancho: 420 }, { etiqueta: "Edad:", valor: "24", ancho: 200 }, { etiqueta: "FUR:", valor: "15/03/26", ancho: 320 }],
-      [{ etiqueta: "Nombre:", valor: "Juana Catarina Tzoc Pu" }],
-      [{ etiqueta: "DPI:", valor: "3012 45678 0801" }],
-      [{ etiqueta: "G:", valor: "2", ancho: 200 }, { etiqueta: "P:", valor: "1", ancho: 200 }, { etiqueta: "Semanas:", valor: "12", ancho: 300 }],
-      { etiqueta: "Motivo:", parrafo: "1er control prenatal", lineas: 1 },
-      { etiqueta: "Tx:", parrafo: "Ácido fólico 5 mg c/día, sulfato ferroso 300 mg c/día", lineas: 2 },
-      [{ etiqueta: "Vacunas:", valor: "Td 1a dosis" }],
-    ],
-  },
-  {
-    archivo: "carne-mateo-2024.jpg",
+    // con-004. Diego no tiene DPI todavía: en Sigo es TMP-20261121-7KQ2.
+    archivo: "ficha-diego-2026.jpg",
     titulo: CENTRO,
     subtitulo: "Carné de vacunación infantil",
-    numero: "N-0233",
+    numero: "N-0418",
     semilla: 53,
     rotacion: -1.1,
     tinta: "#14532d",
-    firma: "Enf. M. Pú",
+    firma: "Enf. A. Tzul",
     filas: [
-      [{ etiqueta: "Nombre:", valor: "Mateo Batz Tzul" }],
-      [{ etiqueta: "F. nac:", valor: "10/03/2024", ancho: 470 }, { etiqueta: "Sexo:", valor: "M", ancho: 200 }, { etiqueta: "Peso:", valor: "3.1 kg", ancho: 270 }],
-      [{ etiqueta: "CUI:", valor: "2987 65432 0801" }],
-      [{ etiqueta: "Madre:", valor: "Ana Tzul" }],
+      [{ etiqueta: "Nombre:", valor: "Diego Ixcoy Batz" }],
+      [{ etiqueta: "F. nac:", valor: "20/11/2025", ancho: 470 }, { etiqueta: "Sexo:", valor: "M", ancho: 200 }, { etiqueta: "Peso:", valor: "3.2 kg", ancho: 270 }],
+      [{ etiqueta: "CUI:", valor: "en trámite" }],
+      [{ etiqueta: "Madre:", valor: "Rosa Batz Tzoc" }],
       { seccion: "VACUNAS" },
-      [{ etiqueta: "BCG:", valor: "11/03/24", ancho: 470 }, { etiqueta: "Hep B:", valor: "11/03/24", ancho: 470 }],
-      [{ etiqueta: "Penta 1:", valor: "", ancho: 470 }, { etiqueta: "Polio 1:", valor: "", ancho: 470 }],
-      [{ etiqueta: "Rota 1:", valor: "", ancho: 470 }, { etiqueta: "Neumo 1:", valor: "", ancho: 470 }],
-      { etiqueta: "Obs:", parrafo: "RN sano, lactancia materna exclusiva", lineas: 2 },
+      [{ etiqueta: "Penta 1:", valor: "20/01/26", ancho: 470 }, { etiqueta: "Polio 1:", valor: "20/01/26", ancho: 470, borroso: true }],
+      [{ etiqueta: "Rota 1:", valor: "20/01/26", ancho: 470 }, { etiqueta: "Neumo 1:", valor: "", ancho: 470 }],
+      { etiqueta: "Obs:", parrafo: "Control de niño sano. Crecimiento adecuado para la edad", lineas: 2 },
     ],
   },
 ];

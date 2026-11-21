@@ -1,153 +1,89 @@
 # Handoff: frontend de Sigo contra el contrato v3
 
-Última actualización: 21 de noviembre de 2026, por la tarde. Este documento sirve para seguir el trabajo en Cursor (u otro agente) sin repetir lo que ya se hizo.
+Última actualización: 21 de noviembre de 2026, por la tarde. Sirve para seguir en Cursor (u otro agente) sin repetir trabajo.
 
 ## 1. Fuente de verdad
 
-- **`docs/contrato-v3.md` manda sobre todo lo demás.** Es la v1 congelada del contrato (21 nov, 12:15).
-- `docs/contrato-v2.md` y `docs/contrato-phil-flujo-y-api.txt` quedaron **obsoletos**. No usar sus rutas.
-- Las rutas por DPI (`/pacientes/{dpi}`, `/fichas/foto`, `/consentimientos/*`, `/importar/*`) **ya no existen**. Todo va por `id` interno del paciente.
-- El `contrato/openapi.yaml` y `contrato/mocks/` que hay hoy en el repo son la **v0 del backend**. También están obsoletos y hay que reemplazarlos (ver la sección 5).
+- **`docs/contrato-v3.md` manda sobre todo.** Es la v1 congelada. Ya tiene dos correcciones: exportar es solo de la paciente, y la emergencia muestra solo alergias y condiciones crónicas (`alertas.medicamentos` llega vacío).
+- `docs/contrato-v2.md` y `docs/contrato-phil-flujo-y-api.txt` están obsoletos.
+- **El contrato publicado:** `contrato/openapi.yaml` (OpenAPI 3.1, las 20 rutas por id) y `contrato/mocks/*.json` (un JSON por respuesta; ver `contrato/mocks/README.md`). Reemplazan a los de la v0.
 
-## 2. Dónde está el código
+## 2. Ramas y commits
 
-- Repo: `Desktop/Hackathon/Sigo`, frontend en `frontend/`, con Next.js 15, React 19 y Tailwind 4.
-- Rama de trabajo: **`frontend-contrato-v2`**, creada desde `origin/frontend`. Nada está commiteado todavía: todo está en el árbol de trabajo. **No hacer commit ni push sin que Phil lo pida.**
-- `main` no tiene frontend. El frontend original vive en `origin/frontend`.
+- Rama de trabajo: **`frontend-contrato-v3`**, que sale de `frontend-contrato-v2` (el WIP de la v2), que a su vez sale de `origin/frontend`. **Nada se ha subido (push).**
+- Commits en `frontend-contrato-v3`, uno por punto:
+  1. Contrato v3: tipos, OpenAPI 3.1, mocks y cliente del API.
+  2. Rutas por id: `[dpi]` pasa a `[id]`.
+  3. Puesto v3: búsqueda por lista, revisión con el paciente completo, importación en un paso.
+  4. Médico: `/hospital/pacientes/[id]`.
+  5. Estilo en la línea de Simple.
+  6. Fichas de demo de la v3.
 
-## 3. Bloqueo actual: `npm install` no termina
+## 3. Cómo correrlo
 
-La red del hackathon tiene un **firewall Fortinet que intercepta TLS**. El certificado de `registry.npmjs.org` llega firmado por `O=Fortinet, CN=FG6H0FTB22905955`, y npm falla con `UNABLE_TO_VERIFY_LEAF_SIGNATURE` en unos 20 a 48 paquetes en cada intento. Por eso **todavía no se ha compilado (`tsc`/`next build`) ni se ha visto nada en el navegador**.
-
-Opciones, de la más segura a la menos:
-
-1. Cambiar de red (hotspot del celular) y correr `cd frontend && npm install`.
-2. Exportar el certificado de la CA de Fortinet y usar `NODE_EXTRA_CA_CERTS=/ruta/fortinet.pem npm install`.
-3. **No** usar `strict-ssl=false` ni `NODE_TLS_REJECT_UNAUTHORIZED=0`.
-
-Después de instalar: `npm run typecheck`, `npm run lint`, `npm run dev` y revisar las 13 pantallas a 360 px y en escritorio.
-
-Tampoco corre el lanzador de la skill impeccable (`skills-diseno-video/diseno/impeccable/scripts/impeccable` da "operation not permitted", probablemente por la cuarentena de macOS en un archivo descargado). Por ahora se usó leyendo `reference/craft-floor.md` y `reference/operate.md` a mano.
-
-## 4. Qué ya está escrito (hecho contra la v2, hay que adaptarlo a la v3)
-
-| Archivo | Qué hace | Estado frente a la v3 |
-| --- | --- | --- |
-| `frontend/lib/types.ts` | Tipos copiados del contrato | **Rehacer** con los tipos de la v3 |
-| `frontend/lib/api/errores.ts` | `ErrorApi`, tabla de códigos, `leerError` | Sirve; falta `formato_no_soportado` |
-| `frontend/lib/api/token.ts` | Token Bearer en localStorage | Sirve |
-| `frontend/lib/api/cliente.ts` | Las 20 rutas, base `/api/v1`, Bearer, mocks | **Rehacer las rutas** (sección 5) |
-| `frontend/lib/api/sesion.tsx` | Login del personal (Supabase o demo) y de la paciente; `<Protegida rol>` con desvío a `/mi/pin` si `debe_cambiar_pin` | Sirve; cambiar `usuario.dpi` por `usuario.paciente_id` |
-| `frontend/lib/api/usar.ts` | `useDatos` (cargando, listo, error), `useCuentaRegresiva`, `formatoRestante` | Sirve |
-| `frontend/lib/api/mock/servidor.ts` | Servidor simulado con estado en localStorage y las reglas del contrato (roles, 403, códigos de un solo uso, 429, emergencia, bitácora, versiones) | **Rehacer las rutas por id** y sacar las respuestas de `contrato/mocks/*.json` |
-| `frontend/lib/api/mock/datos.ts` | Semilla: Ana Tzul, Dr. Mateo Us, Rosa, niño `TMP-20261121-7KQ2`, 4 consultas y bitácora | Cambiar el DPI de Rosa a **2547896330801**, agregar `id` (`p_12`) |
-| `frontend/lib/api/mock/archivos.ts` | Exportar pdf, docx, xlsx, txt, md, html y json con escape (regla 11) | Sirve |
-| `frontend/lib/pendientes.ts` | Cola sin señal en IndexedDB (fotos y `client_id`) | Cambiar `api.subirFoto` a la ruta por id |
-| `frontend/components/estado.tsx` | Cargando, error, sin señal, sin acceso, no encontrado; redirige con `sin_sesion` y `acceso_vencido` | Sirve |
-| `frontend/components/expediente/alertas.tsx` | `BannerAlergias` neutro ("Alergia: penicilina") y `PanelAlertas` | Sirve |
-| `frontend/components/expediente/consultas.tsx` | Línea de tiempo, ver original, versiones, corregir | Sirve |
-| `frontend/components/expediente/codigo.tsx` | Generar código, QR, cuenta regresiva y SMS | Cambiar a `CodigoTemporal` y `/codigos` |
-| `frontend/components/expediente/escaner-qr.tsx` | Lee el QR con `BarcodeDetector` | Sirve |
-| `frontend/components/expediente/cabecera.tsx` | Cabecera del paciente | Sirve |
-| `frontend/components/shell.tsx` | Encabezado, navegación por rol y salir | Restilizar (sección 6) |
-| `frontend/app/**` | 12 de las 13 pantallas | Mover `[dpi]` a `[id]` y ajustarlas a la v3 |
-
-Ya se borró (estaba en `origin/frontend` y la v3 no lo usa): `/tablero`, `app/api/leer-ficha` (llamaba a Claude desde Next; la visión es del backend), `/puesto/digitalizar`, `/hospital/expediente/[id]`, `datos/demo.ts`, `lib/ia.ts`, `lib/sesion.ts` y `lib/supabase/server.ts`.
-
-No se tocaron, como se acordó: `lib/union.ts`, `lib/limpieza.ts`, `lib/mapeo.ts`, `lib/tipos.ts` (tipos viejos que usa `union.ts`), `tests/` y `supabase/migrations/`.
-
-## 5. Qué cambia con la v3
-
-**Tipos** (copiar tal cual de "Modelos de datos" a `frontend/lib/types.ts`, sin renombrar):
-
-- `Usuario.dpi` pasa a ser `Usuario.paciente_id`.
-- `Paciente` gana `id`.
-- `Ficha.dpi` pasa a ser `Ficha.paciente_id`, y se agrega `importacion_id`.
-- `Extraccion` gana `error?`.
-- `Consentimiento` pasa a llamarse `CodigoTemporal`.
-- `Importacion` se reemplaza por `ResultadoImportacion` (resultado fila por fila).
-
-**Rutas** (las 20 de la v3):
-
-| # | Ruta | Antes (v2) |
-| --- | --- | --- |
-| 4 | `GET /pacientes/buscar?dpi=` → `{ pacientes: [] }`, **nunca 404** | `GET /pacientes/{dpi}` con 404 |
-| 6 | `POST /pacientes/{id}/fichas` (multipart, sin `dpi`) | `POST /fichas/foto` |
-| 8 | `GET /fichas?estado=lista&importacion_id=` **(nueva)** | no existía |
-| 9 | Confirmar lleva el **paciente completo menos el DPI** | solo alergias y condiciones |
-| 14 | Exportar es **solo de la paciente** | también la enfermera |
-| 15 | `POST /pacientes/{id}/codigos` → `CodigoTemporal` | `/consentimientos` |
-| 16 | `POST /codigos/canjear` → `{ paciente_id, acceso_vence_en }` | `/consentimientos/activar` → `dpi` |
-| 19 | `POST /emergencia` → `paciente_id` | → `dpi` |
-| 20 | `POST /importaciones` **en un solo paso**, sin pantalla de mapeo | `POST /importar` + `/confirmar` |
-| — | `POST /auth/paciente` → `paciente_id` | → `dpi` |
-| — | Error nuevo: `400 formato_no_soportado` | — |
-
-**Pantallas:** las carpetas pasan de `[dpi]` a `[id]`. `/puesto` busca y recibe una lista vacía en vez de un 404. `/puesto/importar` sube el archivo, muestra el resultado fila por fila (creado, actualizado o error) y lista las fichas con la ruta 8.
-
-**Falta por completo:**
-
-- `frontend/app/hospital/pacientes/[id]/page.tsx`. Debe tener:
-  - expediente del médico con cuenta regresiva hasta `acceso_vence_en` (al llegar a 0 regresa a `/hospital?vencido=1`);
-  - en emergencia, banda roja arriba y solo `PanelAlertas`;
-  - con código, línea de tiempo, versiones y asistente (`POST /preguntar`, con las fuentes enlazadas a `original_url`).
-- `contrato/openapi.yaml` (OpenAPI 3.1) con los 20 endpoints, y `contrato/mocks/` con un JSON por respuesta, a partir de los ejemplos del doc. Reemplazan a los de la v0.
-- Las fotos de demo que referencian los mocks no existen: `public/demo/ficha-rosa-2025.jpg`, `ficha-rosa-2026.jpg`, `ficha-rosa-2019.jpg` y `ficha-diego-2026.jpg`. Las actuales (`ficha-rosa-2012/2014/2024.jpg`) son de la historia vieja (Chuicacá, Totonicapán, otro DPI). Se pueden regenerar con `scripts/generar-fichas.ts` (usa `sharp`), cambiando los datos por los de la v3.
-
-## 6. Estilo: como la app Simple (simple.org), con la marca de Sigo
-
-- **Tono:** utilitario y calmado. Sin gradientes, sombras fuertes ni ilustraciones.
-- **Acción principal:** una por pantalla, en un botón de ancho completo, fijo abajo, de 56 px de alto, azul marino con texto blanco.
-- **Superficies:** fondo crema; tarjetas blancas con borde de 1 px color arena y radio de 12 px.
-- **Texto:** base de 17 a 18 px; títulos de 22 a 28 px; números importantes (DPI, código temporal, PIN) grandes y en cifras tabulares.
-- **Controles:** inputs de 52 px o más; DPI y PIN con `inputmode="numeric"`; objetivos táctiles de 48 px o más; foco visible y contraste AA.
-- **Color con significado:** rojo es alergia o emergencia, amarillo es dato dudoso, verde es guardado y azul marino es acción.
-- **Blobs** (`Manchas`, `PanelMarca`): solo en `/login` y `/mi/entrar`.
-- **Pantallas:** mobile first a 360 px; las del médico y la de importar también tienen que verse bien en escritorio.
-- **Listas de pacientes:** filas grandes con nombre, DPI parcial y edad a la izquierda, y el estado a la derecha.
-- **Textos:** español claro, con verbos ("Escanear ficha", "Confirmar y guardar", "Compartir mi historial").
-- **Tipografía:** Poppins 600 solo en títulos y en "SIGO"; el resto con `system-ui`. Hay que quitar DM Sans, League Spartan, IBM Plex Mono y Caveat de `app/layout.tsx`.
-- **Íconos:** de línea, con `lucide-react`.
-
-```css
---sigo-navy: #233458;         /* botones, títulos, texto fuerte */
---sigo-navy-pressed: #1A2744;
---sigo-ink-2: #5B6478;        /* texto secundario */
---sigo-cream: #EEEAE5;        /* fondo */
---sigo-sand: #E4DCD6;         /* bordes y fondos secundarios */
---sigo-surface: #FFFFFF;      /* tarjetas */
---sigo-copper: #D4996B;       /* SOLO decorativo: nunca texto ni botones */
---sigo-alerta: #B42318;       /* sobre #FDECEA */
---sigo-dudoso: #8A5A00;       /* sobre #FFF3C4, borde #E0B000 */
---sigo-ok: #1E7A46;           /* sobre #E7F4EC */
+```bash
+cd frontend
+npm install        # si la red tiene el Fortinet que intercepta TLS, usar el hotspot; NO apagar strict-ssl
+npm run dev        # http://localhost:3000
+npx tsc --noEmit   # tipos
+npx eslint app components lib
+NEXT_DIST_DIR=.next-build npx next build
+npm run fichas:generar   # regenera public/demo/*.jpg (sharp + fuente Bradley Hand de macOS)
 ```
 
-Lo que hay que quitar de `app/globals.css` y de los componentes: `papel-kraft`, `esquina-doblada`, el grano SVG, `tabla-vieja` con rayas, `sombra-calida*`, el degradado de `Esqueleto` y de la línea de tiempo, el brillo del barrido de escaneo, el texto `text-kraft-tinta` y la clase `.ceja` (etiqueta en mayúsculas sobre los títulos, prohibida por impeccable).
+- **Mocks:** se activan solos si no hay `NEXT_PUBLIC_API_URL`, o con `NEXT_PUBLIC_SIGO_MOCKS=1`. El estado vive en `localStorage` (`sigo:mock:v3`); para volver a la semilla, borra esa clave.
+- **Modo demo:** el acceso por código dura 2 minutos. `NEXT_PUBLIC_SIGO_MODO_DEMO=0` lo deja en las 2 horas reales.
+- **Cuentas de demo:**
+  - Enfermera: `ana.tzul@sigo.demo`.
+  - Médico: `mateo.us@sigo.demo`, con cualquier contraseña.
+  - Paciente: DPI `2547896330801`, PIN `482193`. La primera vez pide cambiar el PIN.
+- **Backend real:** `NEXT_PUBLIC_API_URL=https://…` (sin `/api/v1`), además de `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` para el login del personal.
 
-## 7. Reglas que no hay que romper
+## 4. Mapa del código (`frontend/`)
 
-- No renombrar campos del contrato.
-- La bitácora la escribe solo el backend; el frontend no manda nada extra.
-- Nada se borra: no hay botones de borrar, y corregir siempre crea una versión.
-- La paciente no ve botones de escribir; exportar es solo de ella.
-- La enfermera nunca ve una lista de códigos, solo el que acaba de generar.
-- El PIN solo se muestra una vez, en la respuesta de `POST /pacientes`.
-- Mientras no haya backend, los mocks se activan con `NEXT_PUBLIC_SIGO_MOCKS=1`, o solos si falta `NEXT_PUBLIC_API_URL`. `NEXT_PUBLIC_SIGO_MODO_DEMO=0` apaga el acceso de 2 minutos.
-- Cuentas de demo: enfermera `ana.tzul@sigo.demo`, médico `mateo.us@sigo.demo` (con cualquier contraseña en modo mock). Paciente: DPI `2547896330801`, PIN `482193`.
+| Archivo | Qué hace |
+| --- | --- |
+| `lib/types.ts` | Tipos copiados tal cual de "Modelos de datos" de la v3. No renombrar campos |
+| `lib/api/cliente.ts` | Las 20 rutas (`api.*`), base `/api/v1` y Bearer |
+| `lib/api/errores.ts` | `ErrorApi` y la tabla de errores (incluye `formato_no_soportado` y `sin_senal`, que es solo del front) |
+| `lib/api/token.ts` | Token en `localStorage` |
+| `lib/api/sesion.tsx` | Login (Supabase o demo), `<Protegida rol>` y desvío a `/mi/pin` si `debe_cambiar_pin` |
+| `lib/api/usar.ts` | `useDatos`, `useCuentaRegresiva` y `formatoRestante` |
+| `lib/api/mock/servidor.ts` | Servidor simulado con las reglas del contrato |
+| `lib/api/mock/datos.ts` | Semilla, importada de `contrato/mocks/*.json` (alias `@contrato/*`, `externalDir`) |
+| `lib/api/mock/archivos.ts` | Exportar pdf, docx, xlsx, txt, md, html y json, con escape |
+| `lib/pendientes.ts` | Cola sin señal en IndexedDB (fotos, `paciente_id` y `client_id`) |
+| `components/ui/button.tsx` | `Boton` y `BarraAccion` (acción principal fija abajo, 56 px) |
+| `components/estado.tsx` | Estados cargando, error, sin señal, sin acceso y no encontrado; redirige con `sin_sesion` y `acceso_vencido` |
+| `components/expediente/*` | Banner de alergias, panel de alertas, línea de tiempo con versiones y corrección, código con QR, lector de QR y cabecera |
+| `app/globals.css` | Tokens `--sigo-*` y las clases `titulo`, `subtitulo`, `tarjeta`, `cifra` y `etiqueta-*`/`aviso-*` |
 
-## 8. Dudas abiertas del contrato v3 (para Phil)
+**Pantallas (las 13 de la v3):**
+- Personal: `/login`.
+- Enfermera: `/puesto`, `/puesto/pacientes/[id]`, `/puesto/pacientes/[id]/captura`, `/puesto/fichas/[id]` y `/puesto/importar`.
+- Paciente: `/mi/entrar`, `/mi/pin`, `/mi`, `/mi/compartir` y `/mi/accesos`.
+- Médico: `/hospital` y `/hospital/pacientes/[id]`.
 
-1. **¿La enfermera puede exportar?** Dice "solo la paciente" en la ruta 14 y en "Decisiones", pero "La enfermera solo puede leer, corregir y exportar…" en la sección Enfermera.
-2. **¿La emergencia muestra los medicamentos?** El texto dice que solo muestra alergias y condiciones crónicas, pero `alertas` también trae `medicamentos`. Hoy se muestran las tres.
-3. **Horario:** el plan dice "12:15 a 12:45" y luego "12:00 a 14:00".
+## 5. Decisiones que no están en el contrato
 
-## 9. Orden sugerido para terminar
+- **DPI en la revisión de ficha:** la `Ficha` no trae el DPI del paciente, pero hace falta para marcarlo en rojo si no coincide. Llega por la URL (`?dpi=`) desde la captura o desde importar; si falta, se lee con `GET /pacientes/{id}/expediente`. **Propuesta para el backend:** agregar el DPI del paciente a la `Ficha`, o hacer él la comparación.
+- **`/puesto` lista "Fichas por revisar"** con la ruta 8 sin `importacion_id`. Sin eso, las fotos que sube la cola sin señal no tienen por dónde abrirse.
+- **La captura recibe nombre y DPI por la URL**, para no leer el expediente solo para mostrarlos y para que funcione sin señal.
+- **Importar en el mock:** el mapeo de columnas lo decide `lib/mapeo.ts` (automático, porque la v3 no tiene pantalla de mapeo). Access (.accdb, .mdb) responde 422 en el mock porque el navegador no puede leerlo; el backend sí.
+- **Código inexistente al canjear:** el mock responde `404 no_existe` y lo cuenta como intento fallido. El contrato no define ese caso.
 
-1. Resolver `npm install` (sección 3).
-2. Reemplazar `lib/types.ts` con la v3.
-3. Escribir `contrato/openapi.yaml` y `contrato/mocks/*.json`.
-4. Rehacer `cliente.ts` y el mock con las rutas por id.
-5. Mover `[dpi]` a `[id]` y ajustar las pantallas.
-6. Escribir `/hospital/pacientes/[id]`.
-7. Aplicar el estilo de la sección 6 (tokens en `globals.css` y `layout.tsx` primero, luego cada pantalla).
-8. Correr `typecheck`, `lint` y `dev`, y revisar cada pantalla a 360 px: contraste, 48 px táctiles y los estados cargando, vacío, error y sin señal.
+## 6. Verificado
+
+- `tsc`, `eslint` y `next build` pasan, con las 13 pantallas.
+- Hay una prueba de punta a punta contra el servidor simulado, con 43 de 43 casos bien: buscar y crear (con `dpi_dudoso` y `TMP-`), subir, esperar y confirmar una ficha, 409, versiones, código de un solo uso, acceso de 2 minutos, emergencia sin consultas ni medicamentos, `solo_emergencia`, PIN y 429, bitácora, los 7 formatos de exportar e importar el CSV de ejemplo. El script está en el scratchpad de la sesión; se puede rehacer con `npx tsx` importando `lib/api/cliente.ts`.
+- Contraste AA en todas las combinaciones de texto (mínimo 4.72:1, el verde sobre su fondo). El cobre (2.05:1) solo se usa como adorno.
+- Capturas a 360 px de `/puesto`, `/puesto/pacientes/p_12` y `/mi/entrar`, y a 1280 px de `/hospital`.
+
+## 7. Pendiente
+
+- **Revisión visual a 360 px y en computadora** de `/puesto/fichas/[id]` en estado "lista", `/puesto/importar` con resultado, `/mi`, `/mi/compartir` con código y `/hospital/pacientes/[id]` (con código y en emergencia). Necesitan una sesión con datos, así que hay que recorrerlas a mano o con Playwright.
+- **`frontend/GUION_DEMO.md` y `frontend/README.md`** siguen con la historia vieja (Chuicacá, Totonicapán, otros nombres y DPI). Hay que reescribirlos con la v3.
+- **Fichas de prueba:** `public/demo/` tiene las 4 nuevas (Rosa 2019, 2025 prenatal y 2026, y el carné de Diego), con datos borrosos a propósito. Las viejas se borraron.
+- **Archivos viejos que se conservan pero ya no usa la interfaz:** `lib/tipos.ts`, `lib/union.ts`, `lib/limpieza.ts`, `tests/` y `supabase/migrations/`. `lib/mapeo.ts` y `lib/limpieza.ts` los usa el mock de importar.
+- **`next@15.5.4`** tiene un aviso de seguridad (CVE-2025-66478). Conviene actualizar cuando haya tiempo.
+- **Al conectar el backend real:** revisar CORS (`SIGO_CORS_ORIGINS`) y que las rutas coincidan con `contrato/openapi.yaml`.
