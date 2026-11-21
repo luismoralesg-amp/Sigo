@@ -1,7 +1,8 @@
 "use client";
 /**
  * Sesión en el navegador.
- * - Personal: Supabase Auth → access_token como Bearer → GET /me. Con mocks, cuentas de demo.
+ * - Personal (demo): POST /dev/sesion { rol } → token → Authorization Bearer → GET /me.
+ * - Personal (opcional): NEXT_PUBLIC_SIGO_AUTH=supabase y variables presentes → access_token de Supabase.
  * - Paciente: POST /auth/paciente → token → GET /me.
  * - `Protegida` cuida cada sección: sin sesión manda a entrar, rol equivocado manda a su inicio,
  *   y si GET /me dice debe_cambiar_pin, manda a /mi/pin antes que a cualquier otra pantalla.
@@ -9,7 +10,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Rol, Usuario } from "@/lib/types";
-import { api, USA_MOCKS } from "./cliente";
+import { api, sesionDevValida } from "./cliente";
 import { aErrorApi, ErrorApi } from "./errores";
 import { borrarSesion, guardarSesion, leerSesion, rutaDeEntrada } from "./token";
 
@@ -18,18 +19,25 @@ export const INICIO_POR_ROL: Record<Rol, string> = { enfermera: "/puesto", medic
 /** Usuario en memoria para no pedir GET /me en cada cambio de pantalla. */
 let enCache: Usuario | null = null;
 
-export async function entrarPersonal(correo: string, clave: string): Promise<Usuario> {
-  if (USA_MOCKS) {
-    const { usuarioDemoPorCorreo } = await import("./mock/servidor");
-    const cuenta = usuarioDemoPorCorreo(correo);
-    if (!cuenta) throw new ErrorApi(401, "sin_sesion", "Ese correo no es de una cuenta de demostración.");
-    guardarSesion(cuenta.token, "personal");
-  } else {
-    const { crearClienteNavegador } = await import("@/lib/supabase/cliente");
-    const { data, error } = await crearClienteNavegador().auth.signInWithPassword({ email: correo.trim(), password: clave });
-    if (error || !data.session) throw new ErrorApi(401, "sin_sesion", "Correo o contraseña incorrectos.");
-    guardarSesion(data.session.access_token, "personal");
+/** Login de demostración del personal. El contrato solo acepta el rol, no correo ni clave. */
+export async function entrarPersonalDev(rol: "enfermera" | "medico"): Promise<Usuario> {
+  const cuerpo = await api.sesionDev({ rol });
+  if (!sesionDevValida(cuerpo)) {
+    throw new ErrorApi(500, "validacion", "La sesión del servidor no trae token, vence_en y usuario.");
   }
+  guardarSesion(cuerpo.token, "personal", "dev");
+  return cargarUsuario(true);
+}
+
+/** Login secundario por Supabase. No se llama si faltan las variables: el cliente no se crea. */
+export async function entrarPersonal(correo: string, clave: string): Promise<Usuario> {
+  const { crearClienteNavegador, supabaseConfigurado } = await import("@/lib/supabase/cliente");
+  if (!supabaseConfigurado()) {
+    throw new ErrorApi(500, "validacion", "Faltan las variables de Supabase. El acceso de demostración no las necesita.");
+  }
+  const { data, error } = await crearClienteNavegador().auth.signInWithPassword({ email: correo.trim(), password: clave });
+  if (error || !data.session) throw new ErrorApi(401, "sin_sesion", "Correo o contraseña incorrectos.");
+  guardarSesion(data.session.access_token, "personal", "supabase");
   return cargarUsuario(true);
 }
 
@@ -46,13 +54,15 @@ export async function cargarUsuario(forzar = false): Promise<Usuario> {
 }
 
 export async function salir() {
-  const tipo = leerSesion()?.tipo;
+  const sesion = leerSesion();
+  const tipo = sesion?.tipo;
+  const origen = sesion?.origen;
   enCache = null;
   borrarSesion();
-  if (!USA_MOCKS && tipo === "personal") {
+  if (origen === "supabase") {
     try {
-      const { crearClienteNavegador } = await import("@/lib/supabase/cliente");
-      await crearClienteNavegador().auth.signOut();
+      const { crearClienteNavegador, supabaseConfigurado } = await import("@/lib/supabase/cliente");
+      if (supabaseConfigurado()) await crearClienteNavegador().auth.signOut();
     } catch {
       /* la sesión local ya se borró */
     }

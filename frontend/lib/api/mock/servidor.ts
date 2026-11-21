@@ -318,6 +318,16 @@ const param = (m: RegExpExecArray) => decodeURIComponent(m[1]);
 // 1. GET /me
 ruta("GET", "/me", (p) => resp(200, quien(p.token).usuario));
 
+// POST /dev/sesion. Misma forma que el backend en desarrollo: { token, vence_en, usuario }.
+// Rol fuera de enfermera|medico → 400 validacion (el backend traduce el 422 de FastAPI a ese código).
+ruta("POST", "/dev/sesion", (p) => {
+  const rol = (p.json as { rol?: unknown } | undefined)?.rol;
+  if (rol !== "enfermera" && rol !== "medico") return error("validacion", "El rol tiene que ser enfermera o medico.");
+  const cuenta = CUENTAS_DEMO.find((c) => c.usuario.rol === rol);
+  if (!cuenta) return error("no_existe");
+  return resp(200, { token: cuenta.token, vence_en: isoGT(Date.now() + 12 * 60 * MIN), usuario: cuenta.usuario });
+});
+
 // 2. POST /auth/paciente
 ruta("POST", "/auth/paciente", (p) => {
   const { dpi, pin } = (p.json ?? {}) as { dpi?: string; pin?: string };
@@ -873,6 +883,3 @@ export async function responder(p: Peticion): Promise<Response> {
   return error("no_existe", `Ruta simulada no encontrada: ${p.metodo} ${p.ruta}`);
 }
 
-export function usuarioDemoPorCorreo(correo: string) {
-  return CUENTAS_DEMO.find((c) => c.correo === correo.trim().toLowerCase()) ?? null;
-}

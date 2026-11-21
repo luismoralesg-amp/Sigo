@@ -19,7 +19,7 @@ export const USUARIO_ENFERMERA = meEnfermera as Usuario;
 export const USUARIO_MEDICO = meMedico as Usuario;
 export const CENTRO_PUESTO = USUARIO_ENFERMERA.centro as Centro;
 
-/** Cuentas del login de personal en modo demo (cualquier contraseña). */
+/** Cuentas que devuelve el mock de POST /dev/sesion. El contrato pide el rol, no una contraseña. */
 export const CUENTAS_DEMO = [
   { correo: "ana.tzul@sigo.demo", usuario: USUARIO_ENFERMERA, token: "mock-enfermera" },
   { correo: "mateo.us@sigo.demo", usuario: USUARIO_MEDICO, token: "mock-medico" },
