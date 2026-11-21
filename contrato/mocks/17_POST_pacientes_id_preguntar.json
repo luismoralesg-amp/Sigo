@@ -1,0 +1,11 @@
+{
+  "respuesta": "La última vacuna registrada es Td, el 14 ago 2025 (Puesto de Salud de Chichicastenango).",
+  "fuentes": [
+    {
+      "consulta_id": "con-002",
+      "version": 1,
+      "original_url": "/demo/ficha-rosa-2025.jpg",
+      "campo": "vacunas"
+    }
+  ]
+}

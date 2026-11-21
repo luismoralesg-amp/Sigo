@@ -1,0 +1,17 @@
+{
+  "paciente": {
+    "id": "p_40",
+    "dpi": "2547896310801",
+    "nombre": "Juana Tzoc Ixcoy",
+    "fecha_nacimiento": "1990-07-02",
+    "sexo": "F",
+    "comunidad": "Chichicastenango",
+    "alergias": [],
+    "condiciones_cronicas": [],
+    "version": 1
+  },
+  "pin_inicial": "730416",
+  "advertencias": [
+    "dpi_dudoso"
+  ]
+}

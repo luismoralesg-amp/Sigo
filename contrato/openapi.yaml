@@ -1,1141 +1,880 @@
 openapi: 3.1.0
 info:
-  title: SIGO API
-  summary: Tu historia te sigue.
+  title: Sigo API
+  version: "1.0.0"
   description: |
-    BORRADOR v0. Este contrato lo propone el backend como punto de partida.
-    El frontend (Arturo) también va a entregar su propio contrato. Antes de
-    unir las mitades hay que reconciliarlos y congelar una v1. Ver LEEME.md,
-    sección «Cómo reconciliar contratos».
-
-    API de SIGO para el hackathon open2 Build & Pitch, track Legacy
-    (21 de noviembre de 2026, 8:00–19:00, hora de Guatemala).
-
-    El historial en papel y el de sistemas viejos (Excel / Access) se
-    digitalizan y se ligan al DPI. La IA nunca guarda sola: una persona
-    (la enfermera) confirma. Nadie puede borrar; el historial es de solo
-    agregado y cada corrección queda versionada.
-
-    Todos los datos de ejemplo son inventados. No uses fichas reales.
-
-    Roles:
-      - paciente: dueño del expediente. Solo ve y descarga el suyo.
-        Entra con DPI + PIN. No modifica ni borra.
-      - enfermera: escanea, sube, revisa, confirma, crea y corrige
-        (la corrección crea una versión nueva y el original se conserva).
-        No borra.
-      - medico: solo lectura, y únicamente con un consentimiento
-        temporal del paciente (código o QR, con fecha de vencimiento).
-        No modifica, no exporta y no borra.
-  version: 0.1.0-draft
-  x-estado: borrador-v0
-  license:
-    name: Uso interno del equipo SIGO (hackathon)
+    Contrato v3 (v1 congelada, 21 nov 2026 12:15) entre frontend y backend de Sigo.
+    Fuente: docs/contrato-v3.md. Si algo no coincide, manda el documento.
+    Todas las rutas piden `Authorization: Bearer <token>` salvo POST /auth/paciente.
+    El rol y el centro salen del token; el frontend nunca los manda.
+    Errores: `{ "error": { "codigo", "mensaje" } }` (ver components/schemas/Error y mocks/errores.json).
 servers:
-  - url: http://localhost:8000
-    description: Esqueleto local (hora de Guatemala)
-tags:
-  - name: Auth
-  - name: Mi expediente
-  - name: Consentimientos
-  - name: Fichas
-  - name: Pacientes
-  - name: Bitácora
+  - url: /api/v1
 security:
-  - bearerAuth: []
+  - bearer: []
+
+tags:
+  - name: Entrar
+  - name: Enfermera
+  - name: Expediente
+  - name: Paciente
+  - name: Médico
+
 paths:
+  /me:
+    get:
+      operationId: me
+      summary: 1. Quién soy, mi rol y si debo cambiar el PIN
+      tags: [Entrar]
+      responses:
+        "200":
+          description: Usuario
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Usuario" }
+              examples:
+                enfermera: { externalValue: mocks/01_GET_me.enfermera.json }
+                medico: { externalValue: mocks/01_GET_me.medico.json }
+                paciente: { externalValue: mocks/01_GET_me.paciente.json }
+        "401": { $ref: "#/components/responses/Error" }
+
   /auth/paciente:
     post:
-      tags: [Auth]
-      summary: Entrada del paciente con DPI y PIN
+      operationId: entrarPaciente
+      summary: 2. La paciente entra con DPI y PIN
+      description: Tras 5 intentos fallidos para ese DPI responde 429 durante 15 minutos.
+      tags: [Entrar]
       security: []
-      operationId: authPaciente
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginPaciente"
-            examples:
-              rosa:
-                value:
-                  dpi: "2483175631406"
-                  pin: "4821"
+              type: object
+              required: [dpi, pin]
+              properties:
+                dpi: { $ref: "#/components/schemas/Identificador" }
+                pin: { type: string, pattern: "^[0-9]{6}$" }
+            example: { dpi: "2547896330801", pin: "482193" }
       responses:
         "200":
-          description: Sesión creada
+          description: Token de la paciente
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Sesion"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "422":
-          $ref: "#/components/responses/DPIInvalido"
-  /auth/personal:
-    post:
-      tags: [Auth]
-      summary: Entrada del personal (enfermera o médico)
-      security: []
-      operationId: authPersonal
+                type: object
+                required: [token, vence_en, paciente_id]
+                properties:
+                  token: { type: string }
+                  vence_en: { type: string, format: date-time }
+                  paciente_id: { type: string }
+              examples:
+                ok: { externalValue: mocks/02_POST_auth_paciente.json }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /me/pin:
+    put:
+      operationId: cambiarPin
+      summary: 3. Cambiar el PIN (6 dígitos)
+      tags: [Entrar]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginPersonal"
+              type: object
+              required: [pin_actual, pin_nuevo]
+              properties:
+                pin_actual: { type: string, pattern: "^[0-9]{6}$" }
+                pin_nuevo: { type: string, pattern: "^[0-9]{6}$" }
+            example: { pin_actual: "482193", pin_nuevo: "903417" }
       responses:
-        "200":
-          description: Sesión creada
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Sesion"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-  /auth/me:
+        "204": { description: PIN cambiado }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /pacientes/buscar:
     get:
-      tags: [Auth]
-      summary: Usuario de la sesión actual
-      operationId: authMe
-      responses:
-        "200":
-          description: Perfil
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Usuario"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-  /mi-expediente:
-    get:
-      tags: [Mi expediente]
-      summary: Expediente del paciente autenticado
-      description: Solo rol paciente. Devuelve únicamente su propio expediente.
-      operationId: miExpediente
-      responses:
-        "200":
-          description: Expediente propio
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Paciente"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-  /mi-expediente/exportar:
-    get:
-      tags: [Mi expediente]
-      summary: Descarga del expediente propio
-      operationId: miExpedienteExportar
-      parameters:
-        - $ref: "#/components/parameters/FormatoExportacion"
-      responses:
-        "200":
-          description: Archivo generado
-          content:
-            text/plain:
-              schema:
-                type: string
-            text/markdown:
-              schema:
-                type: string
-            text/html:
-              schema:
-                type: string
-            application/pdf:
-              schema:
-                type: string
-                format: binary
-            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
-              schema:
-                type: string
-                format: binary
-            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
-              schema:
-                type: string
-                format: binary
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "422":
-          $ref: "#/components/responses/ErrorValidacion"
-  /mi-expediente/bitacora:
-    get:
-      tags: [Mi expediente]
-      summary: Bitácora de accesos al expediente propio
-      operationId: miExpedienteBitacora
-      responses:
-        "200":
-          description: Eventos que involucran al paciente autenticado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Bitacora"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-  /consentimientos:
-    get:
-      tags: [Consentimientos]
-      summary: Lista consentimientos
-      description: |
-        El paciente ve los suyos. La enfermera puede verlos del DPI que
-        atiende. El médico solo ve el que activó, si sigue vigente.
-      operationId: listarConsentimientos
+      operationId: buscarPaciente
+      summary: 4. Buscar por DPI o TMP-
+      description: Devuelve 200 con lista vacía si no existe, nunca 404.
+      tags: [Enfermera]
       parameters:
         - name: dpi
           in: query
-          required: false
-          schema:
-            type: string
+          required: true
+          schema: { $ref: "#/components/schemas/Identificador" }
       responses:
         "200":
-          description: Lista
+          description: Pacientes encontrados
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ListaConsentimientos"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
+                type: object
+                required: [pacientes]
+                properties:
+                  pacientes: { type: array, items: { $ref: "#/components/schemas/Paciente" } }
+              examples:
+                encontrado: { externalValue: mocks/04_GET_pacientes_buscar.json }
+                vacio: { externalValue: mocks/04_GET_pacientes_buscar.vacio.json }
+                tmp: { externalValue: mocks/04_GET_pacientes_buscar.tmp.json }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /pacientes:
     post:
-      tags: [Consentimientos]
-      summary: El paciente emite un consentimiento temporal (código o QR)
-      operationId: crearConsentimiento
+      operationId: crearPaciente
+      summary: 5. Crear paciente, con o sin DPI, y su PIN inicial
+      description: |
+        `dpi: null` crea un TMP-. El PIN se muestra una sola vez. DPI repetido → 409 dpi_ya_existe.
+        Un DPI que no cuadra con mod 11 se crea igual, con `advertencias: ["dpi_dudoso"]`. Un TMP- nunca lleva advertencia.
+      tags: [Enfermera]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/NuevoConsentimiento"
+              type: object
+              required: [dpi, nombre]
+              properties:
+                dpi: { oneOf: [{ $ref: "#/components/schemas/Identificador" }, { type: "null" }] }
+                nombre: { type: string }
+                fecha_nacimiento: { type: [string, "null"], format: date }
+                sexo: { enum: [F, M, null] }
+                comunidad: { type: [string, "null"] }
+                telefono: { type: [string, "null"] }
       responses:
         "201":
-          description: Consentimiento creado
+          description: Paciente creado
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Consentimiento"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-  /consentimientos/activar:
+                type: object
+                required: [paciente, pin_inicial, advertencias]
+                properties:
+                  paciente: { $ref: "#/components/schemas/Paciente" }
+                  pin_inicial: { type: string, pattern: "^[0-9]{6}$" }
+                  advertencias: { type: array, items: { enum: [dpi_dudoso] } }
+              examples:
+                ok: { externalValue: mocks/05_POST_pacientes.json }
+                dpi_dudoso: { externalValue: mocks/05_POST_pacientes.dpi_dudoso.json }
+                sin_dpi: { externalValue: mocks/05_POST_pacientes.sin_dpi.json }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /pacientes/{id}/fichas:
+    parameters: [{ $ref: "#/components/parameters/PacienteId" }]
     post:
-      tags: [Consentimientos]
-      summary: El médico canjea el código o QR
-      operationId: activarConsentimiento
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ActivarConsentimiento"
-      responses:
-        "200":
-          description: Consentimiento activado para ese médico
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Consentimiento"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-        "409":
-          $ref: "#/components/responses/ErrorValidacion"
-  /consentimientos/{id}/revocar:
-    post:
-      tags: [Consentimientos]
-      summary: El paciente revoca un consentimiento (no se borra, se cierra)
-      operationId: revocarConsentimiento
-      parameters:
-        - $ref: "#/components/parameters/IdRecurso"
-      responses:
-        "200":
-          description: Revocado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Consentimiento"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-  /fichas/foto:
-    post:
-      tags: [Fichas]
-      summary: La enfermera sube la foto de una ficha
-      description: Solo rol enfermera. La extracción queda pendiente de confirmación.
-      operationId: subirFichaFoto
+      operationId: subirFicha
+      summary: 6. Subir las fotos de una ficha
+      description: |
+        Imágenes JPEG en orden de página, reducidas a 1600 px y menos de 1.5 MB.
+        Un client_id repetido devuelve la ficha existente con 200. Una foto que no es ficha → 422 ilegible.
+      tags: [Enfermera]
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
-              required: [archivo]
+              required: [client_id, imagenes, capturada_en]
               properties:
-                archivo:
-                  type: string
-                  format: binary
+                client_id: { type: string, format: uuid }
+                imagenes: { type: array, items: { type: string, format: binary } }
+                capturada_en: { type: string, format: date-time }
       responses:
-        "201":
-          description: Campos extraídos, aún no guardados como confirmados
+        "200": { $ref: "#/components/responses/Ficha" }
+        "201": { $ref: "#/components/responses/Ficha" }
+        "202":
+          description: Ficha en procesando (o lista si la IA fue rápida)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ficha" }
+              examples:
+                procesando: { externalValue: mocks/06_POST_pacientes_id_fichas.202.json }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /fichas/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      operationId: obtenerFicha
+      summary: 7. Estado y extracción de una ficha
+      description: El frontend la consulta cada 2 s, hasta 60 s, mientras esté en procesando.
+      tags: [Enfermera]
+      responses:
+        "200":
+          description: Ficha
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ficha" }
+              examples:
+                lista: { externalValue: mocks/07_GET_fichas_id.json }
+                procesando: { externalValue: mocks/07_GET_fichas_id.procesando.json }
+                error: { externalValue: mocks/07_GET_fichas_id.error.json }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /fichas:
+    get:
+      operationId: listarFichas
+      summary: 8. Fichas por revisar (por ejemplo, las de una importación)
+      description: Del centro de la enfermera, de la más nueva a la más vieja. Sin importacion_id, todas las pendientes del centro.
+      tags: [Enfermera]
+      parameters:
+        - { name: estado, in: query, required: false, schema: { enum: [lista] } }
+        - { name: importacion_id, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: Fichas
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FichaExtraida"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
+                type: object
+                required: [fichas]
+                properties:
+                  fichas: { type: array, items: { $ref: "#/components/schemas/Ficha" } }
+              examples:
+                importacion: { externalValue: mocks/08_GET_fichas.json }
+        "403": { $ref: "#/components/responses/Error" }
+
   /fichas/{id}/confirmar:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
     post:
-      tags: [Fichas]
-      summary: La enfermera confirma (y si hace falta corrige) la extracción
-      description: |
-        Obligatorio. La IA nunca guarda sola. Las correcciones crean una
-        versión nueva y el original se conserva. Nadie puede borrar.
       operationId: confirmarFicha
-      parameters:
-        - $ref: "#/components/parameters/IdRecurso"
+      summary: 9. Guardar en el expediente como versión nueva
+      description: Paciente completo salvo el dpi. consentimiento distinto de true → 400; ya confirmada → 409.
+      tags: [Enfermera]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/ConfirmacionFicha"
+            schema: { $ref: "#/components/schemas/ConfirmarFicha" }
+            example:
+              paciente: { nombre: "Rosa Batz Tzoc", fecha_nacimiento: "1984-03-12", sexo: F, comunidad: Chichicastenango, alergias: [penicilina], condiciones_cronicas: [] }
+              consultas: [{ fecha: "2025-08-14", motivo: "Control prenatal", diagnostico: "Embarazo 24 semanas", tratamiento: "Sulfato ferroso", vacunas: [Td], pagina: 0 }]
+              consentimiento: true
       responses:
-        "200":
-          description: Ficha confirmada y versionada
+        "201":
+          description: Consultas creadas
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FichaConfirmada"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-        "422":
-          $ref: "#/components/responses/DPIInvalido"
-  /importar:
+                type: object
+                required: [consultas_creadas, version]
+                properties:
+                  consultas_creadas: { type: integer }
+                  version: { type: integer }
+              examples:
+                ok: { externalValue: mocks/09_POST_fichas_id_confirmar.json }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /consultas/{id}/versiones:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
     post:
-      tags: [Fichas]
-      summary: Importa Excel, CSV o Access de un sistema viejo
-      description: Solo enfermera. El archivo original se conserva intacto.
-      operationId: importarSistemaViejo
+      operationId: corregirConsulta
+      summary: 10. Corregir una consulta (versión nueva)
+      tags: [Enfermera]
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               type: object
-              required: [archivo]
+              required: [motivo_cambio]
               properties:
-                archivo:
-                  type: string
-                  format: binary
+                fecha: { type: [string, "null"], format: date }
+                motivo: { type: [string, "null"] }
+                diagnostico: { type: [string, "null"] }
+                tratamiento: { type: [string, "null"] }
+                vacunas: { type: array, items: { type: string } }
+                motivo_cambio: { type: string }
+            example: { fecha: "2026-10-02", motivo_cambio: "Fecha mal leída" }
       responses:
-        "200":
-          description: Resultado de la importación
+        "201":
+          description: Consulta en su nueva versión
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ResultadoImportacion"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-  /pacientes/{dpi}:
+              schema: { $ref: "#/components/schemas/Consulta" }
+              examples:
+                ok: { externalValue: mocks/10_POST_consultas_id_versiones.json }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
     get:
-      tags: [Pacientes]
-      summary: Expediente por DPI
-      description: |
-        Enfermera: puede leerlo para atender. Médico: solo con consentimiento
-        temporal vigente. Paciente: debe usar /mi-expediente (aquí recibe 403).
-      operationId: getPaciente
-      parameters:
-        - $ref: "#/components/parameters/DpiPath"
-      responses:
-        "200":
-          description: Expediente
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Paciente"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-        "422":
-          $ref: "#/components/responses/DPIInvalido"
-  /pacientes/{dpi}/linea-tiempo:
-    get:
-      tags: [Pacientes]
-      summary: Línea de tiempo clínica
-      operationId: getLineaTiempo
-      parameters:
-        - $ref: "#/components/parameters/DpiPath"
-      responses:
-        "200":
-          description: Eventos ordenados
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LineaTiempo"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-        "422":
-          $ref: "#/components/responses/DPIInvalido"
-  /pacientes/{dpi}/alertas:
-    get:
-      tags: [Pacientes]
-      summary: Alertas clínicas (alergias contra medicamentos)
-      operationId: getAlertas
-      parameters:
-        - $ref: "#/components/parameters/DpiPath"
-      responses:
-        "200":
-          description: Alertas
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ListaAlertas"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-        "422":
-          $ref: "#/components/responses/DPIInvalido"
-  /pacientes/{dpi}/preguntar:
-    post:
-      tags: [Pacientes]
-      summary: Pregunta al CAG local sobre el expediente
-      description: Enfermera, o médico con consentimiento vigente.
-      operationId: preguntarCAG
-      parameters:
-        - $ref: "#/components/parameters/DpiPath"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PreguntaCAG"
-      responses:
-        "200":
-          description: Respuesta con citas
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RespuestaCAG"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-        "422":
-          $ref: "#/components/responses/DPIInvalido"
-  /pacientes/{dpi}/exportar:
-    get:
-      tags: [Pacientes]
-      summary: Exporta una copia desde el puesto
-      description: |
-        Solo enfermera (para entregar una copia en el puesto).
-        El paciente descarga por /mi-expediente/exportar.
-        El médico no exporta.
-      operationId: exportarPaciente
-      parameters:
-        - $ref: "#/components/parameters/DpiPath"
-        - $ref: "#/components/parameters/FormatoExportacion"
-      responses:
-        "200":
-          description: Archivo generado
-          content:
-            text/plain:
-              schema:
-                type: string
-            text/markdown:
-              schema:
-                type: string
-            text/html:
-              schema:
-                type: string
-            application/pdf:
-              schema:
-                type: string
-                format: binary
-            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
-              schema:
-                type: string
-                format: binary
-            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
-              schema:
-                type: string
-                format: binary
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-        "422":
-          $ref: "#/components/responses/DPIInvalido"
-  /pacientes/{dpi}/versiones:
-    get:
-      tags: [Pacientes]
-      summary: Historial de versiones (solo agregado)
-      operationId: getVersiones
-      parameters:
-        - $ref: "#/components/parameters/DpiPath"
+      operationId: versionesConsulta
+      summary: 13. Historial de cambios, de la más nueva a la más vieja
+      tags: [Expediente]
       responses:
         "200":
           description: Versiones
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ListaVersiones"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-        "422":
-          $ref: "#/components/responses/DPIInvalido"
-  /pacientes/{dpi}/correcciones:
+                type: object
+                required: [versiones]
+                properties:
+                  versiones: { type: array, items: { $ref: "#/components/schemas/Version" } }
+              examples:
+                ok: { externalValue: mocks/13_GET_consultas_id_versiones.json }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /pacientes/{id}/versiones:
+    parameters: [{ $ref: "#/components/parameters/PacienteId" }]
     post:
-      tags: [Pacientes]
-      summary: La enfermera corrige un expediente ya confirmado
-      description: Crea una versión nueva. El original se conserva. No hay borrado.
       operationId: corregirPaciente
-      parameters:
-        - $ref: "#/components/parameters/DpiPath"
+      summary: 11. Corregir datos o alergias (el DPI no se corrige)
+      tags: [Enfermera]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Correccion"
+              type: object
+              required: [motivo_cambio]
+              properties:
+                nombre: { type: string }
+                fecha_nacimiento: { type: [string, "null"], format: date }
+                sexo: { enum: [F, M, null] }
+                comunidad: { type: [string, "null"] }
+                alergias: { type: array, items: { type: string } }
+                condiciones_cronicas: { type: array, items: { type: string } }
+                motivo_cambio: { type: string }
       responses:
-        "200":
-          description: Corrección versionada
+        "201":
+          description: Paciente en su nueva versión
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ResultadoCorreccion"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
-        "404":
-          $ref: "#/components/responses/NoEncontrado"
-        "422":
-          $ref: "#/components/responses/DPIInvalido"
-  /bitacora:
+              schema: { $ref: "#/components/schemas/Paciente" }
+              examples:
+                ok: { externalValue: mocks/11_POST_pacientes_id_versiones.json }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /pacientes/{id}/expediente:
+    parameters: [{ $ref: "#/components/parameters/PacienteId" }]
     get:
-      tags: [Bitácora]
-      summary: Bitácora general
-      description: Solo enfermera (en el demo). El paciente usa /mi-expediente/bitacora.
-      operationId: getBitacora
+      operationId: expediente
+      summary: 12. Ver el expediente
+      description: |
+        Para el médico exige acceso vigente (si no, 403 acceso_vencido) y lo anota en la bitácora.
+        En emergencia: consultas [] y alertas.medicamentos [].
+      tags: [Expediente]
       responses:
         "200":
-          description: Eventos
+          description: Expediente
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Expediente" }
+              examples:
+                paciente_o_enfermera: { externalValue: mocks/12_GET_pacientes_id_expediente.json }
+                medico_codigo: { externalValue: mocks/12_GET_pacientes_id_expediente.codigo.json }
+                medico_emergencia: { externalValue: mocks/12_GET_pacientes_id_expediente.emergencia.json }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /pacientes/{id}/exportar:
+    parameters: [{ $ref: "#/components/parameters/PacienteId" }]
+    get:
+      operationId: exportar
+      summary: 14. Descargar el historial (solo la paciente)
+      description: Las notas se escapan antes de exportar y el PDF no carga recursos externos. `json` es un resumen para sistemas oficiales, simulado.
+      tags: [Paciente]
+      parameters:
+        - name: formato
+          in: query
+          required: true
+          schema: { enum: [pdf, docx, xlsx, txt, md, html, json] }
+      responses:
+        "200":
+          description: Archivo con Content-Disposition attachment
+          headers:
+            Content-Disposition: { schema: { type: string }, example: 'attachment; filename="historial-p_12.pdf"' }
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document: { schema: { type: string, format: binary } }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } }
+            text/plain: { schema: { type: string } }
+            text/markdown: { schema: { type: string } }
+            text/html: { schema: { type: string } }
+            application/json:
+              schema: { type: object }
+              examples:
+                formato_json: { externalValue: mocks/14_GET_pacientes_id_exportar.formato_json.json }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /pacientes/{id}/codigos:
+    parameters: [{ $ref: "#/components/parameters/PacienteId" }]
+    post:
+      operationId: generarCodigo
+      summary: 15. Generar código o QR temporal
+      description: Un solo uso; se canjea durante 10 minutos; el acceso dura 2 horas (2 minutos en modo demo).
+      tags: [Paciente]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enviar_sms]
+              properties:
+                enviar_sms: { type: boolean }
+            example: { enviar_sms: false }
+      responses:
+        "201":
+          description: Código temporal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CodigoTemporal" }
+              examples:
+                ok: { externalValue: mocks/15_POST_pacientes_id_codigos.json }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /codigos/canjear:
+    post:
+      operationId: canjearCodigo
+      summary: 16. Abrir el acceso con el código
+      description: Vencido → 410; ya usado → 409; 5 códigos fallidos → 429 por 15 minutos.
+      tags: [Médico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codigo]
+              properties:
+                codigo: { type: string, pattern: "^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$" }
+            example: { codigo: "K7P4-Q2XM" }
+      responses:
+        "200":
+          description: Acceso abierto
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Bitacora"
-        "401":
-          $ref: "#/components/responses/NoAutenticado"
-        "403":
-          $ref: "#/components/responses/Prohibido"
+                type: object
+                required: [paciente_id, acceso_vence_en]
+                properties:
+                  paciente_id: { type: string }
+                  acceso_vence_en: { type: string, format: date-time }
+              examples:
+                ok: { externalValue: mocks/16_POST_codigos_canjear.json }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /pacientes/{id}/preguntar:
+    parameters: [{ $ref: "#/components/parameters/PacienteId" }]
+    post:
+      operationId: preguntar
+      summary: 17. Preguntar al asistente
+      description: Sin fuente, la respuesta dice que no lo encontró; nunca inventa. Pide acceso vigente con código.
+      tags: [Médico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pregunta]
+              properties:
+                pregunta: { type: string }
+            example: { pregunta: "¿Cuándo fue su última vacuna?" }
+      responses:
+        "200":
+          description: Respuesta con fuentes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [respuesta, fuentes]
+                properties:
+                  respuesta: { type: string }
+                  fuentes: { type: array, items: { $ref: "#/components/schemas/Fuente" } }
+              examples:
+                ok: { externalValue: mocks/17_POST_pacientes_id_preguntar.json }
+                sin_fuente: { externalValue: mocks/17_POST_pacientes_id_preguntar.sin_fuente.json }
+        "403": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /pacientes/{id}/accesos:
+    parameters: [{ $ref: "#/components/parameters/PacienteId" }]
+    get:
+      operationId: accesos
+      summary: 18. Bitácora, el más reciente primero
+      tags: [Paciente]
+      responses:
+        "200":
+          description: Accesos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accesos]
+                properties:
+                  accesos: { type: array, items: { $ref: "#/components/schemas/Acceso" } }
+              examples:
+                ok: { externalValue: mocks/18_GET_pacientes_id_accesos.json }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /emergencia:
+    post:
+      operationId: emergencia
+      summary: 19. Acceso de emergencia (solo alertas)
+      description: |
+        Motivo obligatorio, al menos 10 caracteres. Dura 1 hora. Solo deja ver los datos del paciente,
+        las alergias y las condiciones crónicas (alertas.medicamentos llega vacío). Versiones, asistente
+        y descargas responden 403 solo_emergencia.
+      tags: [Médico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dpi, motivo]
+              properties:
+                dpi: { $ref: "#/components/schemas/Identificador" }
+                motivo: { type: string, minLength: 10 }
+            example: { dpi: "2547896330801", motivo: "Llega inconsciente a emergencias" }
+      responses:
+        "200":
+          description: Acceso de emergencia abierto
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [paciente_id, acceso_vence_en, tipo_acceso]
+                properties:
+                  paciente_id: { type: string }
+                  acceso_vence_en: { type: string, format: date-time }
+                  tipo_acceso: { const: emergencia }
+              examples:
+                ok: { externalValue: mocks/19_POST_emergencia.json }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /importaciones:
+    post:
+      operationId: importar
+      summary: 20. Subir un Excel, CSV o Access viejo
+      description: Crea fichas en lista para revisar. Otro formato → 400 formato_no_soportado.
+      tags: [Enfermera]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo: { type: string, format: binary, description: ".xlsx, .csv, .accdb o .mdb" }
+      responses:
+        "201":
+          description: Resultado fila por fila
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResultadoImportacion" }
+              examples:
+                ok: { externalValue: mocks/20_POST_importaciones.json }
+        "400": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: token
-      description: |
-        Tokens de demostración: `dev-paciente`, `dev-enfermera`,
-        `dev-medico`. También se emiten al entrar con /auth/paciente
-        o /auth/personal. Guardá la sesión para el modo sin internet.
+    bearer: { type: http, scheme: bearer }
+
   parameters:
-    DpiPath:
-      name: dpi
-      in: path
-      required: true
-      schema:
-        type: string
-        pattern: "^[0-9]{13}$"
-        examples:
-          - "2483175631406"
-    FormatoExportacion:
-      name: formato
-      in: query
-      required: true
-      schema:
-        type: string
-        enum: [txt, docx, pdf, xlsx, md, html]
-    IdRecurso:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
+    Id: { name: id, in: path, required: true, schema: { type: string } }
+    PacienteId: { name: id, in: path, required: true, description: id interno del paciente, schema: { type: string } }
+
   responses:
-    NoAutenticado:
-      description: Falta sesión o el PIN / la contraseña no coinciden
+    Error:
+      description: Error con la forma del contrato
       content:
         application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
-    Prohibido:
-      description: El rol no tiene permiso para esta acción o este expediente
+          schema: { $ref: "#/components/schemas/Error" }
+          examples:
+            todos: { externalValue: mocks/errores.json }
+    Ficha:
+      description: Ficha
       content:
         application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
-    NoEncontrado:
-      description: No existe
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
-    DPIInvalido:
-      description: CUI / DPI con formato o dígito verificador inválido
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
-    ErrorValidacion:
-      description: Solicitud inválida
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+          schema: { $ref: "#/components/schemas/Ficha" }
+
   schemas:
-    Rol:
+    Identificador:
       type: string
-      enum: [paciente, enfermera, medico]
-    LoginPaciente:
+      pattern: "^([0-9]{13}|TMP-[0-9]{8}-[A-Z0-9]{4})$"
+      examples: ["2547896330801", "TMP-20261121-7KQ2"]
+
+    CampoTexto:
       type: object
-      required: [dpi, pin]
-      additionalProperties: false
+      required: [valor, confianza]
       properties:
-        dpi:
-          type: string
-        pin:
-          type: string
-          minLength: 4
-          maxLength: 6
-          description: PIN inventado de 4 a 6 dígitos. En el demo de Rosa es 4821.
-    LoginPersonal:
+        valor: { type: [string, "null"] }
+        confianza: { enum: [alta, baja] }
+    CampoLista:
       type: object
-      required: [correo, password]
-      additionalProperties: false
+      required: [valor, confianza]
       properties:
-        correo:
-          type: string
-          format: email
-        password:
-          type: string
+        valor: { type: [array, "null"], items: { type: string } }
+        confianza: { enum: [alta, baja] }
+    CampoSexo:
+      type: object
+      required: [valor, confianza]
+      properties:
+        valor: { enum: [F, M, null] }
+        confianza: { enum: [alta, baja] }
+
+    Centro:
+      type: object
+      required: [id, nombre, tipo, municipio, departamento]
+      properties:
+        id: { type: string }
+        nombre: { type: string }
+        tipo: { enum: [puesto, centro, hospital] }
+        municipio: { type: string }
+        departamento: { type: string }
+
     Usuario:
       type: object
-      required: [id, rol, nombre]
+      required: [id, nombre, rol, centro, paciente_id, debe_cambiar_pin]
       properties:
-        id:
-          type: string
-        rol:
-          $ref: "#/components/schemas/Rol"
-        nombre:
-          type: string
-        dpi:
-          type: ["string", "null"]
-        centro:
-          type: ["string", "null"]
-        correo:
-          type: ["string", "null"]
-        datos_inventados:
-          type: boolean
-    Sesion:
+        id: { type: string }
+        nombre: { type: string }
+        rol: { enum: [enfermera, medico, paciente] }
+        centro: { oneOf: [{ $ref: "#/components/schemas/Centro" }, { type: "null" }] }
+        paciente_id: { type: [string, "null"] }
+        debe_cambiar_pin: { type: boolean }
+
+    Extraccion:
       type: object
-      required: [token, tipo, usuario]
+      required: [paciente, consultas]
       properties:
-        token:
-          type: string
-        tipo:
-          type: string
-          examples: [Bearer]
-        usuario:
-          $ref: "#/components/schemas/Usuario"
-        aviso:
-          type: string
-    CampoExtraido:
-      type: object
-      required: [valor, confianza, origen]
-      properties:
-        valor:
-          type: ["string", "null"]
-        confianza:
-          type: number
-          minimum: 0
-          maximum: 1
-        origen:
-          type: string
-          enum: [vision, importacion, manual, sistema]
-    FichaExtraida:
-      type: object
-      required: [id, estado, dpi, nombre]
-      properties:
-        id:
-          type: string
-        estado:
-          type: string
-          enum: [pendiente_confirmacion, confirmada]
-        datos_inventados:
-          type: boolean
-        aviso:
-          type: string
-        imagen_id:
-          type: string
-        dpi:
-          $ref: "#/components/schemas/CampoExtraido"
-        nombre:
-          $ref: "#/components/schemas/CampoExtraido"
-        sexo:
-          $ref: "#/components/schemas/CampoExtraido"
-        fecha_nacimiento:
-          $ref: "#/components/schemas/CampoExtraido"
-        fecha_consulta:
-          $ref: "#/components/schemas/CampoExtraido"
-        motivo:
-          $ref: "#/components/schemas/CampoExtraido"
-        diagnostico:
-          $ref: "#/components/schemas/CampoExtraido"
-        medicamentos:
-          $ref: "#/components/schemas/CampoExtraido"
-        alergias:
-          $ref: "#/components/schemas/CampoExtraido"
-        notas:
-          $ref: "#/components/schemas/CampoExtraido"
-        campos_baja_confianza:
-          type: array
-          items:
-            type: string
-        umbral_amarillo:
-          type: number
-    ConfirmacionFicha:
-      type: object
-      required: [confirmado]
-      properties:
-        confirmado:
-          type: boolean
-        dpi:
-          type: ["string", "null"]
-        correcciones:
-          type: object
-          additionalProperties: true
-          description: Campos corregidos a mano. El original se conserva.
-    FichaConfirmada:
-      type: object
-      required: [id, estado, version, dpi, original_conservado]
-      properties:
-        id:
-          type: string
-        estado:
-          type: string
-        version:
-          type: integer
-          minimum: 1
-        dpi:
-          type: string
         paciente:
-          type: string
-        confirmada_por:
-          type: string
-        confirmada_en:
-          type: string
-        campos_corregidos:
-          type: array
-          items:
-            type: string
-        original_conservado:
-          type: boolean
-        aviso:
-          type: string
-    Alergia:
-      type: object
-      required: [sustancia]
-      properties:
-        id:
-          type: string
-        sustancia:
-          type: string
-        severidad:
-          type: string
-          enum: [leve, moderada, grave]
-        reaccion:
-          type: ["string", "null"]
-        registrada_en:
-          type: ["string", "null"]
-        fuente:
-          type: ["string", "null"]
-    Vacuna:
-      type: object
-      required: [nombre]
-      properties:
-        id:
-          type: string
-        nombre:
-          type: string
-        fecha:
-          type: ["string", "null"]
-        dosis:
-          type: ["string", "null"]
-        fuente:
-          type: ["string", "null"]
-    Consulta:
-      type: object
-      required: [fecha]
-      properties:
-        id:
-          type: string
-        fecha:
-          type: string
-        centro:
-          type: ["string", "null"]
-        motivo:
-          type: ["string", "null"]
-        diagnostico:
-          type: ["string", "null"]
-        medicamentos:
-          type: array
-          items:
-            type: string
-        notas:
-          type: ["string", "null"]
-        version:
-          type: integer
-        fuente:
-          type: ["string", "null"]
-    Paciente:
-      type: object
-      required: [nombre, datos_inventados]
-      properties:
-        dpi:
-          type: ["string", "null"]
-        id_temporal:
-          type: ["string", "null"]
-        nombre:
-          type: string
-        sexo:
-          type: ["string", "null"]
-        fecha_nacimiento:
-          type: ["string", "null"]
-        departamento_nacimiento:
-          type: ["string", "null"]
-        municipio_nacimiento:
-          type: ["string", "null"]
-        datos_inventados:
-          type: boolean
-        aviso:
-          type: string
-        alergias:
-          type: array
-          items:
-            $ref: "#/components/schemas/Alergia"
-        vacunas:
-          type: array
-          items:
-            $ref: "#/components/schemas/Vacuna"
+          type: object
+          required: [nombre, dpi, fecha_nacimiento, sexo, comunidad, alergias, condiciones_cronicas]
+          properties:
+            nombre: { $ref: "#/components/schemas/CampoTexto" }
+            dpi: { $ref: "#/components/schemas/CampoTexto" }
+            fecha_nacimiento: { $ref: "#/components/schemas/CampoTexto" }
+            sexo: { $ref: "#/components/schemas/CampoSexo" }
+            comunidad: { $ref: "#/components/schemas/CampoTexto" }
+            alergias: { $ref: "#/components/schemas/CampoLista" }
+            condiciones_cronicas: { $ref: "#/components/schemas/CampoLista" }
         consultas:
           type: array
           items:
-            $ref: "#/components/schemas/Consulta"
-    EventoLineaTiempo:
+            type: object
+            required: [fecha, motivo, diagnostico, tratamiento, vacunas, pagina]
+            properties:
+              fecha: { $ref: "#/components/schemas/CampoTexto" }
+              motivo: { $ref: "#/components/schemas/CampoTexto" }
+              diagnostico: { $ref: "#/components/schemas/CampoTexto" }
+              tratamiento: { $ref: "#/components/schemas/CampoTexto" }
+              vacunas: { $ref: "#/components/schemas/CampoLista" }
+              pagina: { type: integer, minimum: 0 }
+        error: { type: [string, "null"] }
+
+    Ficha:
       type: object
-      required: [fecha, tipo, titulo]
+      required: [id, paciente_id, origen, importacion_id, client_id, estado, originales, extraccion, error, creada_en]
       properties:
-        fecha:
-          type: string
-        tipo:
-          type: string
-          enum: [consulta, vacuna, alergia, correccion, importacion]
-        titulo:
-          type: string
-        detalle:
-          type: ["string", "null"]
-        id_referencia:
-          type: ["string", "null"]
-    LineaTiempo:
+        id: { type: string }
+        paciente_id: { type: string }
+        origen: { enum: [foto, importacion] }
+        importacion_id: { type: [string, "null"] }
+        client_id: { type: [string, "null"] }
+        estado: { enum: [procesando, lista, confirmada, error] }
+        originales: { type: array, items: { type: string } }
+        extraccion: { oneOf: [{ $ref: "#/components/schemas/Extraccion" }, { type: "null" }] }
+        error: { type: [string, "null"] }
+        creada_en: { type: string, format: date-time }
+
+    Paciente:
       type: object
-      required: [dpi, eventos]
+      required: [id, dpi, nombre, fecha_nacimiento, sexo, comunidad, alergias, condiciones_cronicas, version]
       properties:
-        dpi:
-          type: string
-        eventos:
-          type: array
-          items:
-            $ref: "#/components/schemas/EventoLineaTiempo"
-    Alerta:
+        id: { type: string }
+        dpi: { $ref: "#/components/schemas/Identificador" }
+        nombre: { type: string }
+        fecha_nacimiento: { type: [string, "null"], format: date }
+        sexo: { enum: [F, M, null] }
+        comunidad: { type: [string, "null"] }
+        alergias: { type: array, items: { type: string } }
+        condiciones_cronicas: { type: array, items: { type: string } }
+        version: { type: integer }
+
+    DatosConsulta:
       type: object
-      required: [tipo, severidad, mensaje]
+      required: [fecha, centro, motivo, diagnostico, tratamiento, vacunas, original_url]
       properties:
-        id:
-          type: string
-        tipo:
-          type: string
-        severidad:
-          type: string
-          enum: [baja, media, alta]
-        mensaje:
-          type: string
-        dpi:
-          type: string
-        evidencia:
+        fecha: { type: [string, "null"], format: date }
+        centro: { $ref: "#/components/schemas/Centro" }
+        motivo: { type: [string, "null"] }
+        diagnostico: { type: [string, "null"] }
+        tratamiento: { type: [string, "null"] }
+        vacunas: { type: array, items: { type: string } }
+        original_url: { type: string }
+
+    Consulta:
+      allOf:
+        - $ref: "#/components/schemas/DatosConsulta"
+        - type: object
+          required: [id, version, editada_por, editada_en]
+          properties:
+            id: { type: string }
+            version: { type: integer }
+            editada_por: { type: string }
+            editada_en: { type: string, format: date-time }
+
+    Version:
+      type: object
+      required: [version, datos, motivo_cambio, editada_por, editada_en]
+      properties:
+        version: { type: integer }
+        datos: { $ref: "#/components/schemas/DatosConsulta" }
+        motivo_cambio: { type: [string, "null"] }
+        editada_por: { type: string }
+        editada_en: { type: string, format: date-time }
+
+    Expediente:
+      type: object
+      required: [paciente, alertas, consultas, tipo_acceso, acceso_vence_en]
+      properties:
+        paciente: { $ref: "#/components/schemas/Paciente" }
+        alertas:
+          type: object
+          required: [alergias, condiciones_cronicas, medicamentos]
+          properties:
+            alergias: { type: array, items: { type: string } }
+            condiciones_cronicas: { type: array, items: { type: string } }
+            medicamentos: { type: array, items: { type: string } }
+        consultas: { type: array, items: { $ref: "#/components/schemas/Consulta" } }
+        tipo_acceso: { enum: [codigo, emergencia, null] }
+        acceso_vence_en: { type: [string, "null"], format: date-time }
+
+    CodigoTemporal:
+      type: object
+      required: [codigo, qr, vence_en, enviado_por_sms]
+      properties:
+        codigo: { type: string, pattern: "^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$" }
+        qr: { type: string }
+        vence_en: { type: string, format: date-time }
+        enviado_por_sms: { type: boolean }
+
+    Acceso:
+      type: object
+      required: [quien, centro, tipo, motivo, desde, hasta, preguntas_hechas]
+      properties:
+        quien: { type: string }
+        centro: { type: string }
+        tipo: { enum: [codigo, emergencia, enfermera] }
+        motivo: { type: [string, "null"] }
+        desde: { type: string, format: date-time }
+        hasta: { type: string, format: date-time }
+        preguntas_hechas: { type: integer }
+
+    Fuente:
+      type: object
+      required: [consulta_id, version, original_url, campo]
+      properties:
+        consulta_id: { type: string }
+        version: { type: integer }
+        original_url: { type: string }
+        campo: { type: string }
+
+    ConfirmarFicha:
+      type: object
+      required: [paciente, consultas, consentimiento]
+      properties:
+        paciente:
+          type: object
+          required: [nombre, fecha_nacimiento, sexo, comunidad, alergias, condiciones_cronicas]
+          properties:
+            nombre: { type: string }
+            fecha_nacimiento: { type: [string, "null"], format: date }
+            sexo: { enum: [F, M, null] }
+            comunidad: { type: [string, "null"] }
+            alergias: { type: array, items: { type: string } }
+            condiciones_cronicas: { type: array, items: { type: string } }
+        consultas:
           type: array
           items:
             type: object
+            required: [fecha, motivo, diagnostico, tratamiento, vacunas, pagina]
             properties:
-              fuente:
-                type: string
-              fragmento:
-                type: string
-    ListaAlertas:
-      type: object
-      required: [dpi, alertas]
-      properties:
-        dpi:
-          type: string
-        alertas:
-          type: array
-          items:
-            $ref: "#/components/schemas/Alerta"
-    PreguntaCAG:
-      type: object
-      required: [pregunta]
-      additionalProperties: false
-      properties:
-        pregunta:
-          type: string
-    CitaCAG:
-      type: object
-      required: [fuente, fragmento]
-      properties:
-        fuente:
-          type: string
-        fragmento:
-          type: string
-        fecha:
-          type: ["string", "null"]
-    RespuestaCAG:
-      type: object
-      required: [respuesta, citas]
-      properties:
-        respuesta:
-          type: string
-        citas:
-          type: array
-          items:
-            $ref: "#/components/schemas/CitaCAG"
+              fecha: { type: [string, "null"], format: date }
+              motivo: { type: [string, "null"] }
+              diagnostico: { type: [string, "null"] }
+              tratamiento: { type: [string, "null"] }
+              vacunas: { type: array, items: { type: string } }
+              pagina: { type: integer }
+        consentimiento: { const: true }
+
     ResultadoImportacion:
       type: object
-      required: [archivo, filas_leidas, archivo_original_conservado]
+      required: [importacion_id, total_filas, creados, actualizados, con_errores, filas]
       properties:
-        archivo:
-          type: string
-        filas_leidas:
-          type: integer
-        importados:
+        importacion_id: { type: string }
+        total_filas: { type: integer }
+        creados: { type: integer }
+        actualizados: { type: integer }
+        con_errores: { type: integer }
+        filas:
           type: array
           items:
             type: object
+            required: [fila, dpi, estado, expediente_id, error]
             properties:
-              dpi:
-                type: string
-              nombre:
-                type: string
-              estado:
-                type: string
-              campos_baja_confianza:
-                type: array
-                items:
-                  type: string
-        omitidos:
-          type: array
-          items:
-            type: object
-        archivo_original_conservado:
-          type: boolean
-        aviso:
-          type: string
-    NuevoConsentimiento:
-      type: object
-      required: [duracion_minutos]
-      properties:
-        duracion_minutos:
-          type: integer
-          minimum: 5
-          maximum: 1440
-        alcance:
-          type: string
-          enum: [lectura]
-          default: lectura
-    ActivarConsentimiento:
-      type: object
-      required: [codigo]
-      properties:
-        codigo:
-          type: string
-    Consentimiento:
-      type: object
-      required: [id, dpi, codigo, alcance, estado, expira_en]
-      properties:
-        id:
-          type: string
-        dpi:
-          type: string
-        codigo:
-          type: string
-        alcance:
-          type: string
-        estado:
-          type: string
-          enum: [activo, usado, vencido, revocado]
-        creado_en:
-          type: string
-        expira_en:
-          type: string
-        duracion_minutos:
-          type: integer
-        medico_id:
-          type: ["string", "null"]
-        activado_en:
-          type: ["string", "null"]
-        qr_contenido:
-          type: string
-        aviso:
-          type: string
-    ListaConsentimientos:
-      type: object
-      properties:
-        dpi:
-          type: ["string", "null"]
-        consentimientos:
-          type: array
-          items:
-            $ref: "#/components/schemas/Consentimiento"
-    EventoBitacora:
-      type: object
-      required: [id, en, actor_id, rol, accion]
-      properties:
-        id:
-          type: string
-        en:
-          type: string
-        actor_id:
-          type: string
-        rol:
-          type: string
-        accion:
-          type: string
-        dpi:
-          type: ["string", "null"]
-        detalle:
-          type: ["string", "null"]
-    Bitacora:
-      type: object
-      required: [eventos]
-      properties:
-        datos_inventados:
-          type: boolean
-        dpi:
-          type: string
-        eventos:
-          type: array
-          items:
-            $ref: "#/components/schemas/EventoBitacora"
-    VersionExpediente:
-      type: object
-      required: [version, en, accion]
-      properties:
-        version:
-          type: integer
-        en:
-          type: string
-        autor_id:
-          type: string
-        rol:
-          type: string
-        accion:
-          type: string
-        resumen:
-          type: string
-    ListaVersiones:
-      type: object
-      required: [dpi, versiones]
-      properties:
-        dpi:
-          type: string
-        aviso:
-          type: string
-        versiones:
-          type: array
-          items:
-            $ref: "#/components/schemas/VersionExpediente"
-    Correccion:
-      type: object
-      required: [campos]
-      properties:
-        campos:
-          type: object
-          additionalProperties: true
-        nota:
-          type: string
-    ResultadoCorreccion:
-      type: object
-      required: [dpi, version, original_conservado]
-      properties:
-        dpi:
-          type: string
-        version:
-          type: integer
-        en:
-          type: string
-        autor_id:
-          type: string
-        original_conservado:
-          type: boolean
-        campos_corregidos:
-          type: array
-          items:
-            type: string
-        aviso:
-          type: string
+              fila: { type: integer }
+              dpi: { type: [string, "null"] }
+              estado: { enum: [creado, actualizado, error] }
+              expediente_id: { type: [string, "null"], description: id del paciente }
+              error: { type: [string, "null"] }
+
     Error:
       type: object
-      required: [error, mensaje]
+      required: [error]
       properties:
         error:
-          type: string
-        mensaje:
-          type: string
+          type: object
+          required: [codigo, mensaje]
+          properties:
+            codigo:
+              enum:
+                - validacion
+                - identificador_invalido
+                - sin_consentimiento
+                - motivo_requerido
+                - formato_no_soportado
+                - sin_sesion
+                - pin_incorrecto
+                - rol_no_permitido
+                - acceso_vencido
+                - solo_emergencia
+                - no_existe
+                - dpi_ya_existe
+                - ficha_ya_confirmada
+                - codigo_ya_usado
+                - codigo_vencido
+                - archivo_muy_grande
+                - ilegible
+                - demasiados_intentos
+                - ia_no_disponible
+            mensaje: { type: string }

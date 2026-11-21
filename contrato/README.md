@@ -1,4 +1,6 @@
 # Contrato
 
-- **Vigente:** `../docs/contrato-phil-flujo-y-api.txt` (Phil). La v1 en OpenAPI (`openapi.yaml`) y sus mocks se reemplazan aquí antes de las 12:00.
-- Lo que hay hoy en `openapi.yaml` y `mocks/` es la **v0 (obsoleta, rutas por DPI)**: solo referencia.
+- **Vigente:** `../docs/contrato-v3.md` (v3, v1 congelada del 21 nov, rutas por `id`). Si algo no coincide, manda ese documento.
+- `openapi.yaml`: OpenAPI 3.1 con los 20 endpoints de la v3.
+- `mocks/`: un JSON por respuesta (ver `mocks/README.md`). Reemplazan a los de la v0, que tenían rutas por DPI y ya no cuentan.
+- `docs/contrato-phil-flujo-y-api.txt` y `docs/contrato-v2.md` quedan como historial.

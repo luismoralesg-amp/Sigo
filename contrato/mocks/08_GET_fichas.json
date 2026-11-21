@@ -1,0 +1,77 @@
+{
+  "fichas": [
+    {
+      "id": "f_201",
+      "paciente_id": "p_31",
+      "origen": "importacion",
+      "importacion_id": "imp_07",
+      "client_id": null,
+      "estado": "lista",
+      "originales": [
+        "/ejemplos/registro_puesto_2015_2022.csv"
+      ],
+      "extraccion": {
+        "paciente": {
+          "nombre": {
+            "valor": "Pedro Batz Batz",
+            "confianza": "alta"
+          },
+          "dpi": {
+            "valor": null,
+            "confianza": "baja"
+          },
+          "fecha_nacimiento": {
+            "valor": null,
+            "confianza": "baja"
+          },
+          "sexo": {
+            "valor": "M",
+            "confianza": "alta"
+          },
+          "comunidad": {
+            "valor": "Chichicastenango",
+            "confianza": "alta"
+          },
+          "alergias": {
+            "valor": [],
+            "confianza": "alta"
+          },
+          "condiciones_cronicas": {
+            "valor": [],
+            "confianza": "alta"
+          }
+        },
+        "consultas": [
+          {
+            "fecha": {
+              "valor": "2019-05-22",
+              "confianza": "alta"
+            },
+            "motivo": {
+              "valor": "Fiebre y tos",
+              "confianza": "alta"
+            },
+            "diagnostico": {
+              "valor": "Infección respiratoria aguda",
+              "confianza": "alta"
+            },
+            "tratamiento": {
+              "valor": "Acetaminofén 500 mg cada 8 horas",
+              "confianza": "alta"
+            },
+            "vacunas": {
+              "valor": [
+                "Td"
+              ],
+              "confianza": "alta"
+            },
+            "pagina": 1
+          }
+        ],
+        "error": null
+      },
+      "error": null,
+      "creada_en": "2026-11-21T12:31:00-06:00"
+    }
+  ]
+}

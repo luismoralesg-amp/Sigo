@@ -1,0 +1,62 @@
+{
+  "formato": "sigo-resumen-clinico",
+  "version": 1,
+  "simulado": true,
+  "generado_en": "2026-11-21T12:40:00-06:00",
+  "paciente": {
+    "id": "p_12",
+    "dpi": "2547896330801",
+    "nombre": "Rosa Batz Tzoc",
+    "fecha_nacimiento": "1984-03-12",
+    "sexo": "F",
+    "comunidad": "Chichicastenango",
+    "alergias": [
+      "penicilina"
+    ],
+    "condiciones_cronicas": [],
+    "version": 1
+  },
+  "alertas": {
+    "alergias": [
+      "penicilina"
+    ],
+    "condiciones_cronicas": [],
+    "medicamentos": [
+      "Azitromicina 500 mg al día por 3 días"
+    ]
+  },
+  "consultas": [
+    {
+      "id": "con-001",
+      "version": 2,
+      "fecha": "2026-10-02",
+      "centro": "Puesto de Salud de Chichicastenango",
+      "motivo": "Dolor de garganta y fiebre",
+      "diagnostico": "Faringoamigdalitis aguda",
+      "tratamiento": "Azitromicina 500 mg al día por 3 días",
+      "vacunas": []
+    },
+    {
+      "id": "con-002",
+      "version": 1,
+      "fecha": "2025-08-14",
+      "centro": "Puesto de Salud de Chichicastenango",
+      "motivo": "Control prenatal",
+      "diagnostico": "Embarazo 24 semanas",
+      "tratamiento": "Sulfato ferroso",
+      "vacunas": [
+        "Td"
+      ]
+    },
+    {
+      "id": "con-003",
+      "version": 1,
+      "fecha": "2019-05-20",
+      "centro": "Puesto de Salud de Chichicastenango",
+      "motivo": "Tos y fiebre",
+      "diagnostico": "Infección respiratoria aguda",
+      "tratamiento": "Acetaminofén 500 mg cada 8 horas",
+      "vacunas": []
+    }
+  ]
+}
