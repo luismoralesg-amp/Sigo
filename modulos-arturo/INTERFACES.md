@@ -56,4 +56,4 @@ def exportar(expediente: dict, formato: str) -> tuple[bytes, str, str]: ...
 | visión | `POST /pacientes/{id}/fichas` (202, procesa en segundo plano) → `GET /fichas/{id}` | enfermera |
 | importar | `POST /importaciones` (archivo + `paciente_id` o columna DPI) → fichas en `lista` | enfermera |
 | CAG | `POST /pacientes/{id}/preguntar` | médico con acceso por código vigente |
-| exportar | `GET /pacientes/{id}/exportar?formato=` | paciente (dueña); médico con código; nunca en emergencia |
+| exportar | `GET /pacientes/{id}/exportar?formato=` | solo la paciente (dueña). Médico con código: 403 `rol_no_permitido`. Acceso de emergencia: 403 `solo_emergencia` |
