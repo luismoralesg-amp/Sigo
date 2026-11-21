@@ -1,7 +1,7 @@
 "use client";
 /**
  * /mi/compartir · paciente. Código y QR temporal, con cuenta regresiva y opción de mandarlo por SMS.
- * Endpoint: POST /pacientes/{dpi}/consentimientos.
+ * Endpoint: POST /pacientes/{id}/codigos.
  */
 import { Shell } from "@/components/shell";
 import { GenerarCodigo } from "@/components/expediente/codigo";
@@ -17,7 +17,7 @@ export default function PaginaCompartir() {
         Genera un código y muéstraselo al médico. Sirve una sola vez y hay que usarlo en los próximos 10 minutos. Con él, el médico puede ver tu historial durante {DURACION_ACCESO_TEXTO}; después se cierra solo. Siempre puedes ver quién lo abrió.
       </p>
       <div className="mt-7">
-        <GenerarCodigo dpi={usuario.dpi!} para="paciente" />
+        <GenerarCodigo pacienteId={usuario.paciente_id!} para="paciente" />
       </div>
     </Shell>
   );

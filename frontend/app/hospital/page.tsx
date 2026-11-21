@@ -1,7 +1,7 @@
 "use client";
 /**
  * /hospital · médico. Escribir el código o escanear el QR; botón "Acceso de emergencia" que pide DPI y motivo.
- * Endpoints: POST /consentimientos/activar, POST /emergencia.
+ * Endpoints: POST /codigos/canjear, POST /emergencia.
  * Regla 3: el médico solo entra con código o por emergencia.
  */
 import { Suspense, useCallback, useState } from "react";
@@ -48,8 +48,8 @@ function Hospital() {
       setActivando(true);
       setError(null);
       try {
-        const r = await api.activarCodigo(c);
-        router.push(`/hospital/pacientes/${encodeURIComponent(r.dpi)}`);
+        const r = await api.canjearCodigo(c);
+        router.push(`/hospital/pacientes/${encodeURIComponent(r.paciente_id)}`);
       } catch (e) {
         const ea = aErrorApi(e);
         setError(MENSAJE_CODIGO[ea.codigo] ?? ea.mensaje);
@@ -146,7 +146,7 @@ function FormularioEmergencia({ onCancelar }: { onCancelar: () => void }) {
     setError(null);
     try {
       const r = await api.emergencia({ dpi: id, motivo: motivo.trim() });
-      router.push(`/hospital/pacientes/${encodeURIComponent(r.dpi)}`);
+      router.push(`/hospital/pacientes/${encodeURIComponent(r.paciente_id)}`);
     } catch (err) {
       const ea = aErrorApi(err);
       setError({ campo: ea.codigo === "motivo_requerido" ? "motivo" : ea.codigo === "identificador_invalido" || ea.codigo === "no_existe" ? "dpi" : "general", mensaje: ea.mensaje });

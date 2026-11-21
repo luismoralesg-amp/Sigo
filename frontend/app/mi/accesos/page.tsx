@@ -1,7 +1,7 @@
 "use client";
 /**
  * /mi/accesos · paciente. Quién vio mi historial y cuándo; las emergencias en rojo.
- * Endpoint: GET /pacientes/{dpi}/accesos (el más reciente primero).
+ * Endpoint: GET /pacientes/{id}/accesos (el más reciente primero).
  */
 import Link from "next/link";
 import { Building2, Hospital, KeyRound, MessageCircleQuestion, Siren, Eye } from "lucide-react";
@@ -22,8 +22,8 @@ const TIPO: Record<Acceso["tipo"], { texto: string; icono: typeof Eye }> = {
 
 export default function PaginaAccesos() {
   const { usuario } = useUsuario();
-  const dpi = usuario.dpi!;
-  const r = useDatos(() => api.accesos(dpi), [dpi]);
+  const id = usuario.paciente_id!;
+  const r = useDatos(() => api.accesos(id), [id]);
 
   return (
     <Shell>

@@ -1,7 +1,7 @@
 "use client";
 /**
  * /mi · paciente. Mi historial: alergias arriba, línea de tiempo, botón "Descargar" con los formatos.
- * Endpoints: GET /pacientes/{dpi}/expediente, GET /pacientes/{dpi}/exportar.
+ * Endpoints: GET /pacientes/{id}/expediente, GET /pacientes/{id}/exportar.
  * Regla 4: la paciente solo ve, descarga y comparte. No hay botones de editar.
  */
 import { useState } from "react";
@@ -31,8 +31,8 @@ const NOMBRES: Record<FormatoExportar, { titulo: string; detalle: string }> = {
 
 export default function PaginaMiHistorial() {
   const { usuario } = useUsuario();
-  const dpi = usuario.dpi!;
-  const exp = useDatos(() => api.expediente(dpi), [dpi]);
+  const id = usuario.paciente_id!;
+  const exp = useDatos(() => api.expediente(id), [id]);
 
   return (
     <Shell ancho="amplio">
@@ -66,7 +66,7 @@ export default function PaginaMiHistorial() {
             </section>
             <aside className="min-w-0 space-y-6 lg:pt-[3.05rem]">
               <PanelAlertas alertas={exp.datos.alertas} className="sm:grid-cols-1" />
-              <Descargar dpi={dpi} />
+              <Descargar pacienteId={id} />
             </aside>
           </div>
         </>
@@ -75,7 +75,7 @@ export default function PaginaMiHistorial() {
   );
 }
 
-function Descargar({ dpi }: { dpi: string }) {
+function Descargar({ pacienteId }: { pacienteId: string }) {
   const [formato, setFormato] = useState<FormatoExportar>("pdf");
   const [bajando, setBajando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +84,7 @@ function Descargar({ dpi }: { dpi: string }) {
     setBajando(true);
     setError(null);
     try {
-      const { archivo, nombre } = await api.exportar(dpi, formato);
+      const { archivo, nombre } = await api.exportar(pacienteId, formato);
       const url = URL.createObjectURL(archivo);
       const a = document.createElement("a");
       a.href = url;

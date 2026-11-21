@@ -1,9 +1,9 @@
 "use client";
 /**
- * /puesto/pacientes/[dpi] · enfermera. Consultas del paciente, "Escanear ficha", "Corregir" en cada dato
+ * /puesto/pacientes/[id] · enfermera. Consultas del paciente, "Escanear ficha", "Corregir" en cada dato
  * y "Generar código" para la paciente sin smartphone.
- * Endpoints: GET /pacientes/{dpi}/expediente, POST /consultas/{id}/versiones, POST /pacientes/{dpi}/versiones,
- * POST /pacientes/{dpi}/consentimientos.
+ * Endpoints: GET /pacientes/{id}/expediente, POST /consultas/{id}/versiones, POST /pacientes/{id}/versiones,
+ * POST /pacientes/{id}/codigos.
  */
 import { use, useState } from "react";
 import Link from "next/link";
@@ -21,9 +21,9 @@ import { api } from "@/lib/api/cliente";
 import { aErrorApi, ErrorApi } from "@/lib/api/errores";
 import { useDatos } from "@/lib/api/usar";
 
-export default function PaginaPacientePuesto({ params }: { params: Promise<{ dpi: string }> }) {
-  const dpi = decodeURIComponent(use(params).dpi);
-  const exp = useDatos(() => api.expediente(dpi), [dpi]);
+export default function PaginaPacientePuesto({ params }: { params: Promise<{ id: string }> }) {
+  const id = decodeURIComponent(use(params).id);
+  const exp = useDatos(() => api.expediente(id), [id]);
   const [panel, setPanel] = useState<null | "datos" | "codigo">(null);
 
   return (
@@ -66,12 +66,12 @@ function Contenido({
   onPaciente: (p: Paciente) => void;
   onRecargar: () => void;
 }) {
-  const dpi = e.paciente.dpi;
+  const captura = `/puesto/pacientes/${encodeURIComponent(e.paciente.id)}/captura?nombre=${encodeURIComponent(e.paciente.nombre)}`;
   return (
     <>
       <CabeceraPaciente paciente={e.paciente}>
         <Boton asChild tamaño="lg">
-          <Link href={`/puesto/pacientes/${encodeURIComponent(dpi)}/captura`}>
+          <Link href={captura}>
             <Camera /> Escanear ficha
           </Link>
         </Boton>
@@ -83,7 +83,7 @@ function Contenido({
       {panel === "codigo" && (
         <Panel titulo="Código para la paciente sin smartphone" onCerrar={() => setPanel(null)}>
           <p className="mb-4 text-tinta-suave">Genéralo solo si la paciente lo pide. Queda anotado en su bitácora.</p>
-          <GenerarCodigo dpi={dpi} para="enfermera" />
+          <GenerarCodigo pacienteId={e.paciente.id} para="enfermera" />
         </Panel>
       )}
 
@@ -102,7 +102,7 @@ function Contenido({
               <p className="mt-3 text-[1.1rem] font-semibold text-primario">Todavía no hay consultas</p>
               <p className="mt-1">Escanea su primera ficha en papel. Lo que lea la IA lo revisas tú antes de guardar.</p>
               <Boton asChild className="mt-4">
-                <Link href={`/puesto/pacientes/${encodeURIComponent(dpi)}/captura`}>
+                <Link href={captura}>
                   <Camera /> Escanear ficha
                 </Link>
               </Boton>
@@ -167,7 +167,7 @@ function CorregirPaciente({ p, onCancelar, onGuardado }: { p: Paciente; onCancel
     setError(null);
     try {
       onGuardado(
-        await api.corregirPaciente(p.dpi, {
+        await api.corregirPaciente(p.id, {
           nombre: v.nombre.trim(),
           alergias: aLista(v.alergias),
           condiciones_cronicas: aLista(v.condiciones),
