@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "tsx --test tests/*.test.ts",
+    "db:setup": "tsx scripts/setup.ts",
+    "demo:reset": "tsx scripts/setup.ts --solo-datos",
+    "fichas:generar": "tsx scripts/generar-fichas.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.12.0",
@@ -23,6 +28,7 @@
     "lucide-react": "^1.77.0",
     "next": "15.5.4",
     "papaparse": "^5.7.1",
+    "pg": "^8.23.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwind-merge": "^3.7.1",
@@ -34,6 +40,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^18.0.10",
