@@ -40,6 +40,12 @@ export function fechaHora(iso: string | null | undefined): string {
   return `${fechaCorta(dia)}, ${hora}`;
 }
 
+/** DPI parcial para listas: "DPI ···· 0801"; un TMP- se muestra completo. */
+export function dpiParcial(v: string | null | undefined): string {
+  if (!v) return "Sin DPI";
+  return v.startsWith("TMP-") ? v : `DPI ···· ${soloDigitos(v).slice(-4)}`;
+}
+
 export function dpiValido(v: string | null | undefined): boolean {
   return soloDigitos(v).length === 13;
 }

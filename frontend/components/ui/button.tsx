@@ -18,7 +18,9 @@ const botonVariantes = cva(
         md: "min-h-11 px-4 text-[0.95rem]",
         lg: "min-h-14 px-6 text-[1.05rem]",
         xl: "min-h-16 px-7 text-[1.15rem]",
-        icono: "h-11 w-11",
+        icono: "h-12 w-12",
+        /** Acción principal de la pantalla: ancho completo, 56 px. */
+        accion: "h-14 w-full px-6 text-[1.08rem]",
       },
     },
     defaultVariants: { variante: "primario", tamaño: "md" },
@@ -34,3 +36,18 @@ export const Boton = React.forwardRef<HTMLButtonElement, BotonProps>(({ classNam
   return <Comp ref={ref} className={cn(botonVariantes({ variante, tamaño }), className)} {...props} />;
 });
 Boton.displayName = "Boton";
+
+/**
+ * Barra fija abajo con la acción principal de la pantalla (una por pantalla).
+ * Deja un espacio del mismo alto al final del contenido para que no tape nada.
+ */
+export function BarraAccion({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <>
+      <div aria-hidden="true" className="h-28" />
+      <div className={cn("fixed inset-x-0 bottom-0 z-30 border-t border-linea bg-superficie px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3", className)}>
+        <div className="mx-auto flex max-w-3xl flex-col gap-2">{children}</div>
+      </div>
+    </>
+  );
+}

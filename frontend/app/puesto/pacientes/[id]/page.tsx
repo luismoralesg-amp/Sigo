@@ -66,7 +66,7 @@ function Contenido({
   onPaciente: (p: Paciente) => void;
   onRecargar: () => void;
 }) {
-  const captura = `/puesto/pacientes/${encodeURIComponent(e.paciente.id)}/captura?nombre=${encodeURIComponent(e.paciente.nombre)}`;
+  const captura = `/puesto/pacientes/${encodeURIComponent(e.paciente.id)}/captura?${new URLSearchParams({ nombre: e.paciente.nombre, dpi: e.paciente.dpi })}`;
   return (
     <>
       <CabeceraPaciente paciente={e.paciente}>

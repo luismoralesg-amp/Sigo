@@ -3,7 +3,8 @@
  * /puesto/pacientes/[id]/captura · enfermera. Cámara: una o varias páginas.
  * Endpoint: POST /pacientes/{id}/fichas (o la cola local si no hay señal).
  * La ficha nace ligada a este paciente (P-05), aunque el papel no traiga DPI.
- * El nombre llega por la URL (?nombre=) para no leer el expediente solo por mostrarlo, y para que funcione sin señal.
+ * El nombre y el DPI llegan por la URL (?nombre=&dpi=) para no leer el expediente solo por mostrarlo, y para que
+ * funcione sin señal. El DPI se pasa a la revisión para marcar en rojo si la IA leyó otro.
  */
 import { Suspense, use, useState } from "react";
 import Link from "next/link";
@@ -30,7 +31,9 @@ export default function PaginaCaptura({ params }: { params: Promise<{ id: string
 
 function Contenido({ id }: { id: string }) {
   const router = useRouter();
-  const nombre = useSearchParams().get("nombre") ?? "este paciente";
+  const params = useSearchParams();
+  const nombre = params.get("nombre") ?? "este paciente";
+  const dpi = params.get("dpi");
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +66,7 @@ function Contenido({ id }: { id: string }) {
         pendiente.imagenes = await Promise.all(pendiente.imagenes.map((i) => comprimir(i, true)));
         ficha = await api.subirFicha(id, pendiente);
       }
-      router.push(`/puesto/fichas/${encodeURIComponent(ficha.id)}`);
+      router.push(`/puesto/fichas/${encodeURIComponent(ficha.id)}${dpi ? `?dpi=${encodeURIComponent(dpi)}` : ""}`);
     } catch (e) {
       const ea = aErrorApi(e);
       // Sin señal o IA caída: la ficha queda en cola (tabla de errores, 503).

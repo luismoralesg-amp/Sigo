@@ -197,3 +197,17 @@ body {
   .imprimible, .imprimible * { visibility: visible !important; }
   .imprimible { position: fixed; left: 50%; top: 24px; transform: translateX(-50%); box-shadow: none !important; }
 }
+
+/* ---------- Piezas base de las pantallas (los colores se ajustan en el paso de estilo) ---------- */
+@layer components {
+  .titulo { font-family: var(--font-poppins), ui-sans-serif, sans-serif; font-weight: 600; font-size: 1.6rem; line-height: 1.15; color: var(--primario); letter-spacing: -0.01em; }
+  .subtitulo { font-family: var(--font-poppins), ui-sans-serif, sans-serif; font-weight: 600; font-size: 1.25rem; line-height: 1.2; color: var(--tinta); }
+  .tarjeta { display: block; background: var(--superficie); border: 1px solid var(--linea); border-radius: 12px; }
+  .cifra { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; letter-spacing: 0.02em; }
+  .etiqueta-campo { font-size: 0.95rem; font-weight: 600; color: var(--tinta-suave); }
+  .etiqueta-dudoso { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.3rem 0.7rem; font-size: 0.85rem; font-weight: 600; background: var(--revisar-fondo); color: var(--revisar-tinta); }
+  .etiqueta-ok { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.3rem 0.7rem; font-size: 0.85rem; font-weight: 600; background: var(--confirmado-fondo); color: var(--confirmado); }
+  .etiqueta-alerta { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.3rem 0.7rem; font-size: 0.85rem; font-weight: 600; background: var(--alerta-fondo); color: var(--alerta); }
+  .aviso-dudoso { border-radius: 12px; border: 1px solid var(--revisar); background: var(--revisar-fondo); color: var(--revisar-tinta); }
+  .aviso-alerta { border-radius: 12px; border: 1px solid var(--alerta); background: var(--alerta-fondo); color: var(--alerta); }
+}

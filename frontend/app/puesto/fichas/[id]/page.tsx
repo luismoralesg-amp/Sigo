@@ -3,20 +3,23 @@
  * /puesto/fichas/[id] · enfermera. Revisión: foto o fila original a la izquierda, campos a la derecha,
  * dudosos en amarillo, consentimiento, confirmar.
  * Endpoints: GET /fichas/{id} (cada 2 s, hasta 60 s, mientras esté en "procesando"), POST /fichas/{id}/confirmar.
- * Regla 2: nada entra al expediente sin esta confirmación.
+ * Regla 2: nada entra al expediente sin esta confirmación. Confirmar manda el paciente completo salvo el dpi.
+ *
+ * La Ficha no trae el DPI del paciente, y hace falta para marcar en rojo si la IA leyó otro. Llega por la URL
+ * (?dpi=) desde la captura o desde importar; si falta, se lee del expediente.
  */
-import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, CircleCheck, FileText, LoaderCircle, ScanLine, ShieldAlert, TriangleAlert } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Check, CircleCheck, FileText, LoaderCircle, ShieldAlert, TriangleAlert } from "lucide-react";
 import type { Campo, Ficha } from "@/lib/types";
 import { Shell } from "@/components/shell";
-import { Boton } from "@/components/ui/button";
+import { Boton, BarraAccion } from "@/components/ui/button";
 import { AreaTexto, Entrada } from "@/components/ui/input";
 import { Cargando, ErrorPantalla, MensajeError } from "@/components/estado";
 import { api, type ConfirmarFicha } from "@/lib/api/cliente";
 import { aErrorApi, type ErrorApi } from "@/lib/api/errores";
-import { cn, fechaCorta, mostrarIdentificador, soloDigitos } from "@/lib/utils";
+import { cn, mostrarIdentificador, soloDigitos } from "@/lib/utils";
 
 const INTERVALO = 2000;
 const LIMITE = 60_000;
@@ -27,10 +30,24 @@ type Estado =
   | { tipo: "procesando"; ficha: Ficha; agotado: boolean }
   | { tipo: "ficha"; ficha: Ficha };
 
+const rutaPaciente = (id: string) => `/puesto/pacientes/${encodeURIComponent(id)}`;
+
 export default function PaginaFicha({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent(use(params).id);
+  return (
+    <Shell ancho="amplio">
+      <Suspense>
+        <Contenido id={id} />
+      </Suspense>
+    </Shell>
+  );
+}
+
+function Contenido({ id }: { id: string }) {
+  const dpiUrl = useSearchParams().get("dpi");
   const [s, setS] = useState<Estado>({ tipo: "cargando" });
   const inicio = useRef(Date.now());
+  const vivo = useRef(true);
 
   const consultar = useCallback(async () => {
     try {
@@ -41,111 +58,101 @@ export default function PaginaFicha({ params }: { params: Promise<{ id: string }
         return !agotado;
       }
       setS({ tipo: "ficha", ficha: f });
-      return false;
     } catch (e) {
       setS({ tipo: "error", error: aErrorApi(e) });
-      return false;
     }
+    return false;
   }, [id]);
 
+  const ciclo = useCallback(async () => {
+    if ((await consultar()) && vivo.current) setTimeout(() => vivo.current && void ciclo(), INTERVALO);
+  }, [consultar]);
+
   useEffect(() => {
-    let vivo = true;
-    let t: ReturnType<typeof setTimeout>;
-    const ciclo = async () => {
-      const seguir = await consultar();
-      if (vivo && seguir) t = setTimeout(ciclo, INTERVALO);
-    };
+    vivo.current = true;
+    inicio.current = Date.now();
     void ciclo();
     return () => {
-      vivo = false;
-      clearTimeout(t);
+      vivo.current = false;
     };
-  }, [consultar]);
+  }, [ciclo]);
 
   const reintentar = () => {
     inicio.current = Date.now();
     setS({ tipo: "cargando" });
-    const ciclo = async () => {
-      if (await consultar()) setTimeout(ciclo, INTERVALO);
-    };
     void ciclo();
   };
 
-  return (
-    <Shell ancho="amplio">
-      {s.tipo === "cargando" && <Cargando />}
-      {s.tipo === "error" && <ErrorPantalla error={s.error} onReintentar={reintentar} />}
-      {s.tipo === "procesando" && <Procesando ficha={s.ficha} agotado={s.agotado} onReintentar={reintentar} />}
-      {s.tipo === "ficha" && s.ficha.estado === "lista" && s.ficha.extraccion && <Revision ficha={s.ficha} />}
-      {s.tipo === "ficha" && s.ficha.estado === "confirmada" && <YaConfirmada ficha={s.ficha} />}
-      {s.tipo === "ficha" && s.ficha.estado === "error" && <FichaConError ficha={s.ficha} />}
-    </Shell>
-  );
+  if (s.tipo === "cargando") return <Cargando />;
+  if (s.tipo === "error") return <ErrorPantalla error={s.error} onReintentar={reintentar} />;
+  if (s.tipo === "procesando") return <Procesando ficha={s.ficha} agotado={s.agotado} onReintentar={reintentar} />;
+  const f = s.ficha;
+  if (f.estado === "confirmada") return <Final ficha={f} titulo="Esta ficha ya se confirmó" texto="Sus datos ya están en el expediente. Si algo quedó mal, corrígelo desde el paciente: se guarda como versión nueva." />;
+  if (f.estado === "error" || !f.extraccion) return <FichaConError ficha={f} />;
+  return <Revision ficha={f} dpiUrl={dpiUrl} />;
 }
-
-const rutaPaciente = (dpi: string) => `/puesto/pacientes/${encodeURIComponent(dpi)}`;
 
 // ---------------------------------------------------------------- estados de la ficha
 
 function Procesando({ ficha, agotado, onReintentar }: { ficha: Ficha; agotado: boolean; onReintentar: () => void }) {
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start">
-      <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-[18px] bg-tinta shadow-calida-lg lg:max-w-none">
+    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      <div className="tarjeta overflow-hidden">
         {ficha.originales[0] && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={ficha.originales[0]} alt="Ficha que se está leyendo" className="max-h-[42dvh] w-full object-contain lg:max-h-[70dvh]" />
-        )}
-        {!agotado && (
-          <div className="pointer-events-none absolute inset-x-0 h-[14%] [animation:barrido_2.1s_cubic-bezier(.45,0,.55,1)_infinite_alternate]">
-            <div className="h-full bg-[linear-gradient(180deg,rgba(232,185,140,0)_0%,rgba(232,185,140,.28)_88%,rgba(232,185,140,0)_100%)]" />
-            <div className="absolute inset-x-0 bottom-[12%] h-[2px] bg-[#e8b98c] shadow-[0_0_14px_3px_rgba(232,185,140,.75)]" />
-          </div>
+          <img src={ficha.originales[0]} alt="Ficha que se está leyendo" className="mx-auto max-h-[40dvh] w-auto lg:max-h-[70dvh]" />
         )}
       </div>
       <div role="status" aria-live="polite">
-        <h1 className="text-[1.9rem] font-semibold leading-tight text-primario">{agotado ? "La lectura está tardando" : "Leyendo la ficha…"}</h1>
-        <p className="mt-2 text-tinta-suave">
+        <h1 className="titulo">{agotado ? "La lectura está tardando" : "Leyendo la ficha…"}</h1>
+        {!agotado && (
+          <div className="mt-4 h-1.5 w-40 overflow-hidden rounded-full bg-linea" aria-hidden="true">
+            <div className="h-full w-1/3 animate-[deslizar_1.1s_ease-in-out_infinite] rounded-full bg-primario" />
+          </div>
+        )}
+        <p className="mt-3 text-tinta-suave">
           {agotado
-            ? "La IA sigue trabajando. Puedes esperar aquí o volver al paciente; la ficha te espera lista para revisar."
+            ? "Puedes esperar aquí o volver al paciente; la ficha te espera en “Fichas por revisar”."
             : `${ficha.originales.length} ${ficha.originales.length === 1 ? "página" : "páginas"}. Cuando termine, revisas cada dato antes de guardar.`}
         </p>
         {agotado && (
-          <div className="mt-5 flex flex-wrap gap-2.5">
-            <Boton onClick={onReintentar}>
-              <ScanLine /> Volver a consultar
+          <BarraAccion>
+            <Boton tamaño="accion" onClick={onReintentar}>
+              Volver a consultar
             </Boton>
-            <Boton asChild variante="secundario">
-              <Link href={rutaPaciente(ficha.dpi)}>Volver al paciente</Link>
-            </Boton>
-          </div>
+          </BarraAccion>
         )}
       </div>
     </div>
   );
 }
 
-function YaConfirmada({ ficha }: { ficha: Ficha }) {
+function Final({ ficha, titulo, texto }: { ficha: Ficha; titulo: string; texto: string }) {
   return (
-    <div className="mx-auto max-w-md py-12 text-center">
+    <div className="mx-auto max-w-md pt-6 text-center" role="status">
       <CircleCheck className="mx-auto h-12 w-12 text-confirmado" aria-hidden="true" />
-      <h1 className="mt-4 text-[1.6rem] font-semibold">Esta ficha ya se confirmó</h1>
-      <p className="mt-2 text-tinta-suave">Sus datos ya están en el expediente. Si algo quedó mal, corrígelo desde el paciente: se guarda como versión nueva.</p>
-      <Boton asChild className="mt-6">
-        <Link href={rutaPaciente(ficha.dpi)}>Ver expediente</Link>
-      </Boton>
+      <h1 className="titulo mt-4">{titulo}</h1>
+      <p className="mt-2 text-tinta-suave">{texto}</p>
+      <BarraAccion>
+        <Boton asChild tamaño="accion">
+          <Link href={rutaPaciente(ficha.paciente_id)}>Ver expediente</Link>
+        </Boton>
+      </BarraAccion>
     </div>
   );
 }
 
 function FichaConError({ ficha }: { ficha: Ficha }) {
   return (
-    <div className="mx-auto max-w-md py-12 text-center" role="alert">
+    <div className="mx-auto max-w-md pt-6 text-center" role="alert">
       <TriangleAlert className="mx-auto h-12 w-12 text-revisar-tinta" aria-hidden="true" />
-      <h1 className="mt-4 text-[1.6rem] font-semibold">No se pudo leer esta ficha</h1>
-      <p className="mt-2 text-tinta-suave">{ficha.error ?? "Toma la foto otra vez, con más luz."}</p>
-      <Boton asChild className="mt-6">
-        <Link href={`${rutaPaciente(ficha.dpi)}/captura`}>Tomar la foto otra vez</Link>
-      </Boton>
+      <h1 className="titulo mt-4">No se pudo leer esta ficha</h1>
+      <p className="mt-2 text-tinta-suave">{ficha.error ?? ficha.extraccion?.error ?? "Toma la foto otra vez, con más luz."}</p>
+      <BarraAccion>
+        <Boton asChild tamaño="accion">
+          <Link href={`${rutaPaciente(ficha.paciente_id)}/captura`}>Tomar la foto otra vez</Link>
+        </Boton>
+      </BarraAccion>
     </div>
   );
 }
@@ -158,7 +165,16 @@ const revisable = (c: Campo<string | string[]>): Revisable => {
   return { valor: Array.isArray(v) ? v.join(", ") : v ?? "", baja: c.confianza === "baja", revisado: c.confianza === "alta" };
 };
 type ConsultaEditable = { pagina: number; fecha: Revisable; motivo: Revisable; diagnostico: Revisable; tratamiento: Revisable; vacunas: Revisable };
-const CAMPOS_CONSULTA: Array<{ k: keyof Omit<ConsultaEditable, "pagina">; etiqueta: string; tipo: "fecha" | "texto" | "largo" | "lista" }> = [
+type CampoDef<K extends string> = { k: K; etiqueta: string; tipo: "fecha" | "texto" | "largo" | "lista" | "sexo" };
+const CAMPOS_PACIENTE: CampoDef<"nombre" | "fecha_nacimiento" | "sexo" | "comunidad" | "alergias" | "condiciones_cronicas">[] = [
+  { k: "nombre", etiqueta: "Nombre completo", tipo: "texto" },
+  { k: "fecha_nacimiento", etiqueta: "Fecha de nacimiento", tipo: "fecha" },
+  { k: "sexo", etiqueta: "Sexo", tipo: "sexo" },
+  { k: "comunidad", etiqueta: "Comunidad", tipo: "texto" },
+  { k: "alergias", etiqueta: "Alergias, separadas por coma", tipo: "lista" },
+  { k: "condiciones_cronicas", etiqueta: "Condiciones crónicas, separadas por coma", tipo: "lista" },
+];
+const CAMPOS_CONSULTA: CampoDef<Exclude<keyof ConsultaEditable, "pagina">>[] = [
   { k: "fecha", etiqueta: "Fecha de la consulta", tipo: "fecha" },
   { k: "motivo", etiqueta: "Motivo", tipo: "texto" },
   { k: "diagnostico", etiqueta: "Diagnóstico", tipo: "largo" },
@@ -166,12 +182,34 @@ const CAMPOS_CONSULTA: Array<{ k: keyof Omit<ConsultaEditable, "pagina">; etique
   { k: "vacunas", etiqueta: "Vacunas, separadas por coma", tipo: "lista" },
 ];
 const aLista = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
+type PacienteEditable = Record<(typeof CAMPOS_PACIENTE)[number]["k"], Revisable>;
 
-function Revision({ ficha }: { ficha: Ficha }) {
+/** DPI del paciente de la ficha: de la URL, o del expediente si no vino. */
+function useDpiPaciente(pacienteId: string, dpiUrl: string | null) {
+  const [dpi, setDpi] = useState<string | null>(dpiUrl);
+  useEffect(() => {
+    if (dpiUrl) return;
+    let vivo = true;
+    api.expediente(pacienteId).then((e) => vivo && setDpi(e.paciente.dpi), () => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [pacienteId, dpiUrl]);
+  return dpi;
+}
+
+function Revision({ ficha, dpiUrl }: { ficha: Ficha; dpiUrl: string | null }) {
   const router = useRouter();
   const ex = ficha.extraccion!;
-  const [alergias, setAlergias] = useState(() => revisable(ex.paciente.alergias));
-  const [condiciones, setCondiciones] = useState(() => revisable(ex.paciente.condiciones_cronicas));
+  const dpiPaciente = useDpiPaciente(ficha.paciente_id, dpiUrl);
+  const [paciente, setPaciente] = useState<PacienteEditable>(() => ({
+    nombre: revisable(ex.paciente.nombre),
+    fecha_nacimiento: revisable(ex.paciente.fecha_nacimiento),
+    sexo: revisable(ex.paciente.sexo),
+    comunidad: revisable(ex.paciente.comunidad),
+    alergias: revisable(ex.paciente.alergias),
+    condiciones_cronicas: revisable(ex.paciente.condiciones_cronicas),
+  }));
   const [consultas, setConsultas] = useState<ConsultaEditable[]>(() =>
     ex.consultas.map((c) => ({ pagina: c.pagina, fecha: revisable(c.fecha), motivo: revisable(c.motivo), diagnostico: revisable(c.diagnostico), tratamiento: revisable(c.tratamiento), vacunas: revisable(c.vacunas) }))
   );
@@ -182,28 +220,32 @@ function Revision({ ficha }: { ficha: Ficha }) {
   const [hecho, setHecho] = useState<{ consultas_creadas: number; version: number } | null>(null);
 
   const dpiLeido = ex.paciente.dpi.valor ? soloDigitos(ex.paciente.dpi.valor) || ex.paciente.dpi.valor : null;
-  const dpiNoCoincide = Boolean(dpiLeido && dpiLeido !== ficha.dpi);
-  const pendientes = useMemo(
-    () => [alergias, condiciones, ...consultas.flatMap((c) => CAMPOS_CONSULTA.map(({ k }) => c[k]))].filter((r) => r.baja && !r.revisado).length,
-    [alergias, condiciones, consultas]
-  );
+  const dpiNoCoincide = Boolean(dpiLeido && dpiPaciente && dpiLeido !== dpiPaciente);
+  const todos = useMemo(() => [...Object.values(paciente), ...consultas.flatMap((c) => CAMPOS_CONSULTA.map(({ k }) => c[k]))], [paciente, consultas]);
+  const pendientes = todos.filter((r) => r.baja && !r.revisado).length;
   const esFoto = ficha.origen === "foto";
 
   async function confirmar(e: React.FormEvent) {
     e.preventDefault();
     if (pendientes) {
-      setError({ campo: "revision", mensaje: `Revisa ${pendientes === 1 ? "el dato" : `los ${pendientes} datos`} en amarillo: corrígelo o marca "Está bien".` });
-      document.querySelector<HTMLElement>("[data-pendiente='true'] input, [data-pendiente='true'] textarea")?.focus();
+      setError({ campo: "revision", mensaje: `Revisa ${pendientes === 1 ? "el dato" : `los ${pendientes} datos`} en amarillo: corrígelo o toca "Está bien".` });
+      document.querySelector<HTMLElement>("[data-pendiente='true'] input, [data-pendiente='true'] textarea, [data-pendiente='true'] button")?.focus();
       return;
     }
-    if (!consentimiento) {
-      setError({ campo: "consentimiento", mensaje: "Falta el consentimiento de la paciente para guardar su ficha." });
-      return;
-    }
+    if (!paciente.nombre.valor.trim()) return setError({ campo: "general", mensaje: "El nombre no puede quedar vacío." });
+    if (!consentimiento) return setError({ campo: "consentimiento", mensaje: "Falta el consentimiento de la paciente para guardar su ficha." });
     setEnviando(true);
     setError(null);
+    const sexo = paciente.sexo.valor === "F" || paciente.sexo.valor === "M" ? paciente.sexo.valor : null;
     const cuerpo: ConfirmarFicha = {
-      paciente: { alergias: aLista(alergias.valor), condiciones_cronicas: aLista(condiciones.valor) },
+      paciente: {
+        nombre: paciente.nombre.valor.trim(),
+        fecha_nacimiento: paciente.fecha_nacimiento.valor || null,
+        sexo,
+        comunidad: paciente.comunidad.valor.trim() || null,
+        alergias: aLista(paciente.alergias.valor),
+        condiciones_cronicas: aLista(paciente.condiciones_cronicas.valor),
+      },
       consultas: consultas.map((c) => ({
         fecha: c.fecha.valor || null,
         motivo: c.motivo.valor || null,
@@ -218,7 +260,7 @@ function Revision({ ficha }: { ficha: Ficha }) {
       setHecho(await api.confirmarFicha(ficha.id, cuerpo));
     } catch (err) {
       const ea = aErrorApi(err);
-      if (ea.codigo === "ficha_ya_confirmada") return router.push(rutaPaciente(ficha.dpi));
+      if (ea.codigo === "ficha_ya_confirmada") return router.push(rutaPaciente(ficha.paciente_id));
       setError({ campo: ea.codigo === "sin_consentimiento" ? "consentimiento" : "general", mensaje: ea.mensaje });
       setEnviando(false);
     }
@@ -226,45 +268,40 @@ function Revision({ ficha }: { ficha: Ficha }) {
 
   if (hecho)
     return (
-      <div className="mx-auto max-w-md py-12 text-center" role="status">
-        <CircleCheck className="mx-auto h-12 w-12 text-confirmado" aria-hidden="true" />
-        <h1 className="mt-4 text-[1.7rem] font-semibold">Guardado en el expediente</h1>
-        <p className="mt-2 text-tinta-suave">
-          {hecho.consultas_creadas} {hecho.consultas_creadas === 1 ? "consulta nueva" : "consultas nuevas"}, como versión {hecho.version}. El original queda guardado junto a cada dato.
-        </p>
-        <Boton asChild className="mt-6">
-          <Link href={rutaPaciente(ficha.dpi)}>Ver expediente</Link>
-        </Boton>
-      </div>
+      <Final
+        ficha={ficha}
+        titulo="Guardado en el expediente"
+        texto={`${hecho.consultas_creadas} ${hecho.consultas_creadas === 1 ? "consulta nueva" : "consultas nuevas"}, como versión ${hecho.version}. El original queda guardado junto a cada dato.`}
+      />
     );
 
   const original = ficha.originales[esFoto ? pagina : 0];
 
   return (
     <>
-      <Link href={rutaPaciente(ficha.dpi)} className="-ml-2 mb-3 inline-flex min-h-11 items-center gap-1.5 rounded-[10px] px-2 font-semibold text-tinta-suave hover:text-tinta">
-        <ArrowLeft className="h-5 w-5" /> Volver al paciente
+      <Link href={rutaPaciente(ficha.paciente_id)} className="-ml-2 mb-3 inline-flex min-h-12 items-center gap-1.5 rounded-[10px] px-2 font-semibold text-tinta-suave hover:text-tinta">
+        <ArrowLeft className="h-5 w-5" aria-hidden="true" /> Volver al paciente
       </Link>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start">
         {/* Original */}
         <section aria-label="Original" className="lg:sticky lg:top-4">
           {esFoto ? (
             <>
-              <div className="overflow-hidden rounded-[16px] bg-tinta shadow-calida-lg">
+              <div className="tarjeta overflow-hidden">
                 {original && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={original} alt={`Página ${pagina + 1} de la ficha`} className="mx-auto max-h-[46dvh] w-auto lg:max-h-[78dvh]" />
+                  <img src={original} alt={`Página ${pagina + 1} de la ficha`} className="mx-auto max-h-[44dvh] w-auto lg:max-h-[78dvh]" />
                 )}
               </div>
               {ficha.originales.length > 1 && (
-                <div className="mt-3 flex gap-2" role="tablist" aria-label="Páginas">
+                <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Páginas">
                   {ficha.originales.map((_, i) => (
                     <button
                       key={i}
                       role="tab"
                       aria-selected={i === pagina}
                       onClick={() => setPagina(i)}
-                      className={cn("min-h-11 rounded-[10px] px-3.5 font-semibold", i === pagina ? "bg-primario text-white" : "bg-superficie text-tinta-suave ring-1 ring-linea")}
+                      className={cn("min-h-12 rounded-[12px] border px-4 font-semibold", i === pagina ? "border-primario bg-primario text-white" : "border-linea bg-superficie text-tinta")}
                     >
                       Página {i + 1}
                     </button>
@@ -273,12 +310,12 @@ function Revision({ ficha }: { ficha: Ficha }) {
               )}
             </>
           ) : (
-            <div className="papel-kraft rounded-[16px] p-5 text-kraft-tinta">
-              <FileText className="h-7 w-7" aria-hidden="true" />
-              <p className="mt-2 font-semibold text-primario">Importado de un archivo del sistema anterior</p>
-              <p className="mt-1 text-[0.92rem]">Cada consulta indica la fila del archivo de donde salió. El archivo original queda guardado.</p>
+            <div className="tarjeta p-4">
+              <FileText className="h-6 w-6 text-primario" aria-hidden="true" />
+              <p className="mt-2 font-semibold">Importado de un archivo del sistema anterior</p>
+              <p className="mt-1 text-tinta-suave">Cada consulta dice de qué fila del archivo salió. El archivo original queda guardado.</p>
               {original && (
-                <a href={original} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-1.5 font-semibold text-primario underline-offset-4 hover:underline">
+                <a href={original} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-12 items-center font-semibold text-primario underline underline-offset-4">
                   Abrir el archivo original
                 </a>
               )}
@@ -287,53 +324,47 @@ function Revision({ ficha }: { ficha: Ficha }) {
         </section>
 
         {/* Campos */}
-        <form onSubmit={confirmar} noValidate className="min-w-0 space-y-6 pb-28">
+        <form id="form-ficha" onSubmit={confirmar} noValidate className="min-w-0 space-y-5">
           <div>
-            <h1 className="text-[1.8rem] font-semibold leading-tight text-primario">Revisar lo que se leyó</h1>
-            <p className="mt-1.5 text-tinta-suave" aria-live="polite">
+            <h1 className="titulo">Revisar lo que se leyó</h1>
+            <p className="mt-1.5" aria-live="polite">
               {pendientes ? (
-                <>
-                  <span className="font-semibold text-revisar-tinta">{pendientes} {pendientes === 1 ? "dato dudoso" : "datos dudosos"}</span>, en amarillo. Compáralos con el original.
-                </>
+                <span className="etiqueta-dudoso">
+                  {pendientes} {pendientes === 1 ? "dato dudoso" : "datos dudosos"} por revisar
+                </span>
               ) : (
-                "Todo revisado. Confirma con la paciente y guarda."
+                <span className="etiqueta-ok">Todo revisado</span>
               )}
             </p>
           </div>
 
-          {/* Paciente */}
-          <fieldset className="rounded-[16px] border border-linea bg-superficie p-4 sm:p-5">
-            <legend className="px-1 text-[1.05rem] font-semibold">Paciente</legend>
-            {dpiNoCoincide && (
-              <div className="mb-4 flex gap-3 rounded-[12px] border border-alerta/50 bg-alerta-fondo p-3.5 text-alerta" role="alert">
-                <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
-                <p className="text-tinta">
-                  <span className="font-semibold text-alerta">El DPI de la ficha no coincide.</span> La ficha dice{" "}
-                  <span className="num font-mono font-semibold">{mostrarIdentificador(dpiLeido)}</span> y el paciente es{" "}
-                  <span className="num font-mono font-semibold">{mostrarIdentificador(ficha.dpi)}</span>. Revisa que sea la ficha correcta antes de confirmar.
+          <fieldset className="tarjeta p-4 sm:p-5">
+            <legend className="subtitulo px-1">Paciente</legend>
+            <div className={cn("mb-4 rounded-[12px] px-3.5 py-3", dpiNoCoincide ? "aviso-alerta" : "bg-papel")} role={dpiNoCoincide ? "alert" : undefined}>
+              <p className="etiqueta-campo">DPI en la ficha</p>
+              <p className={cn("cifra text-[1.15rem] font-semibold", dpiNoCoincide && "text-alerta")}>{dpiLeido ? mostrarIdentificador(dpiLeido) : "No se leyó"}</p>
+              {dpiNoCoincide && (
+                <p className="mt-1.5 flex gap-2 text-tinta">
+                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-alerta" aria-hidden="true" />
+                  <span>
+                    No coincide con el paciente (<span className="cifra font-semibold">{mostrarIdentificador(dpiPaciente)}</span>). Revisa que sea la ficha correcta antes de confirmar.
+                  </span>
                 </p>
-              </div>
-            )}
-            <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
-              <DatoLeido etiqueta="Nombre" campo={ex.paciente.nombre} />
-              <DatoLeido etiqueta="DPI en la ficha" campo={ex.paciente.dpi} mostrar={mostrarIdentificador} rojo={dpiNoCoincide} />
-              <DatoLeido etiqueta="Nacimiento" campo={ex.paciente.fecha_nacimiento} mostrar={fechaCorta} />
-              <DatoLeido etiqueta="Sexo" campo={ex.paciente.sexo} mostrar={(v) => (v === "F" ? "Femenino" : "Masculino")} />
-              <DatoLeido etiqueta="Comunidad" campo={ex.paciente.comunidad} />
-            </dl>
-            <p className="mt-2 text-[0.85rem] text-tinta-tenue">Estos datos no se guardan desde aquí; si están mal, corrígelos en el paciente.</p>
-            <div className="mt-4 grid gap-4">
-              <CampoRevisable id="alergias" etiqueta="Alergias, separadas por coma" r={alergias} onCambio={setAlergias} tipo="lista" />
-              <CampoRevisable id="condiciones" etiqueta="Condiciones crónicas, separadas por coma" r={condiciones} onCambio={setCondiciones} tipo="lista" />
+              )}
+              {!dpiLeido && <p className="mt-1 text-[0.95rem] text-tinta-suave">Se guarda con el paciente que elegiste antes de escanear.</p>}
+            </div>
+            <div className="grid gap-4">
+              {CAMPOS_PACIENTE.map(({ k, etiqueta, tipo }) => (
+                <CampoRevisable key={k} id={`p-${k}`} etiqueta={etiqueta} tipo={tipo} r={paciente[k]} onCambio={(r) => setPaciente({ ...paciente, [k]: r })} />
+              ))}
             </div>
           </fieldset>
 
-          {/* Consultas */}
           {consultas.map((c, i) => (
-            <fieldset key={i} className="rounded-[16px] border border-linea bg-superficie p-4 sm:p-5">
-              <legend className="px-1 text-[1.05rem] font-semibold">
-                Consulta {consultas.length > 1 ? `${i + 1} de ${consultas.length}` : ""}
-                <span className="ml-2 text-[0.88rem] font-normal text-tinta-tenue">{esFoto ? `página ${c.pagina + 1}` : `fila ${c.pagina + 2} del archivo`}</span>
+            <fieldset key={i} className="tarjeta p-4 sm:p-5">
+              <legend className="subtitulo px-1">
+                {consultas.length > 1 ? `Consulta ${i + 1} de ${consultas.length}` : "Consulta"}
+                <span className="ml-2 font-sans text-[0.95rem] font-normal text-tinta-suave">{esFoto ? `página ${c.pagina + 1}` : `fila ${c.pagina + 2} del archivo`}</span>
               </legend>
               <div className="grid gap-4">
                 {CAMPOS_CONSULTA.map(({ k, etiqueta, tipo }) => (
@@ -351,47 +382,36 @@ function Revision({ ficha }: { ficha: Ficha }) {
             </fieldset>
           ))}
 
-          {/* Consentimiento */}
           <div>
-            <label className={cn("flex cursor-pointer items-start gap-3 rounded-[14px] border p-4", error?.campo === "consentimiento" ? "border-alerta bg-alerta-fondo" : "border-linea bg-superficie")}>
+            <label className={cn("tarjeta flex min-h-14 cursor-pointer items-start gap-3 p-4", error?.campo === "consentimiento" && "!border-alerta")}>
               <input
                 type="checkbox"
                 checked={consentimiento}
                 onChange={(e) => setConsentimiento(e.target.checked)}
-                className="mt-1 h-5 w-5 shrink-0 accent-[var(--primario)]"
+                className="mt-0.5 h-6 w-6 shrink-0 accent-[var(--primario)]"
                 aria-describedby={error?.campo === "consentimiento" ? "error-consentimiento" : undefined}
               />
               <span>
                 <span className="block font-semibold">La paciente aceptó que su ficha se guarde en Sigo</span>
-                <span className="block text-[0.92rem] text-tinta-suave">Se lo explicaste: ella decide quién ve su historial, y nada se borra.</span>
+                <span className="block text-tinta-suave">Ella decide quién ve su historial, y nada se borra.</span>
               </span>
             </label>
-            {error?.campo === "consentimiento" && <MensajeError id="error-consentimiento" className="mt-2">{error.mensaje}</MensajeError>}
+            {error?.campo === "consentimiento" && (
+              <MensajeError id="error-consentimiento" className="mt-2">
+                {error.mensaje}
+              </MensajeError>
+            )}
           </div>
-
           {error && error.campo !== "consentimiento" && <MensajeError>{error.mensaje}</MensajeError>}
-
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-linea bg-superficie/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur">
-            <div className="mx-auto flex max-w-6xl items-center justify-end gap-3">
-              <p className="hidden flex-1 text-tinta-suave sm:block">{pendientes ? `${pendientes} por revisar` : "Listo para guardar"}</p>
-              <Boton type="submit" tamaño="xl" className="w-full sm:w-auto" disabled={enviando}>
-                {enviando ? <LoaderCircle className="animate-spin" /> : <Check />} Confirmar y guardar
-              </Boton>
-            </div>
-          </div>
         </form>
       </div>
-    </>
-  );
-}
 
-function DatoLeido<T>({ etiqueta, campo, mostrar, rojo }: { etiqueta: string; campo: Campo<T>; mostrar?: (v: T) => string; rojo?: boolean }) {
-  const v = campo.valor;
-  return (
-    <div className={cn("rounded-[10px] px-2.5 py-1.5", rojo ? "bg-alerta-fondo" : campo.confianza === "baja" && "bg-revisar-fondo")}>
-      <dt className="text-[0.85rem] text-tinta-tenue">{etiqueta}</dt>
-      <dd className={cn("font-semibold", rojo && "text-alerta", v === null && "font-normal text-tinta-tenue")}>{v === null ? "No se leyó" : mostrar ? mostrar(v) : String(v)}</dd>
-    </div>
+      <BarraAccion>
+        <Boton type="submit" form="form-ficha" tamaño="accion" disabled={enviando}>
+          {enviando ? <LoaderCircle className="animate-spin" /> : <Check />} Confirmar y guardar
+        </Boton>
+      </BarraAccion>
+    </>
   );
 }
 
@@ -407,44 +427,72 @@ function CampoRevisable({
   etiqueta: string;
   r: Revisable;
   onCambio: (r: Revisable) => void;
-  tipo: "fecha" | "texto" | "largo" | "lista";
+  tipo: "fecha" | "texto" | "largo" | "lista" | "sexo";
   onFoco?: () => void;
 }) {
   const pendiente = r.baja && !r.revisado;
   const cambiar = (valor: string) => onCambio({ ...r, valor, revisado: true });
-  const comunes = {
-    id,
-    value: r.valor,
-    onFocus: onFoco,
-    placeholder: r.baja && !r.valor ? "No se pudo leer. Escríbelo si aparece." : undefined,
-    "aria-describedby": pendiente ? `${id}-ayuda` : undefined,
-    className: cn(pendiente && "border-revisar bg-revisar-fondo", tipo === "fecha" && "num"),
-  };
+  const clase = cn(pendiente && "!border-revisar bg-revisar-fondo", tipo === "fecha" && "cifra");
+  const ayuda = pendiente ? `${id}-ayuda` : undefined;
   return (
     <div data-pendiente={pendiente} className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <label htmlFor={id} className="text-[0.9rem] font-semibold text-tinta-suave">
-          {etiqueta}
-        </label>
+      <div className="flex min-h-9 items-center justify-between gap-2">
+        {tipo === "sexo" ? (
+          <span id={`${id}-etiqueta`} className="etiqueta-campo">
+            {etiqueta}
+          </span>
+        ) : (
+          <label htmlFor={id} className="etiqueta-campo">
+            {etiqueta}
+          </label>
+        )}
         {r.baja &&
           (pendiente ? (
-            <button type="button" onClick={() => onCambio({ ...r, revisado: true })} className="min-h-9 rounded-full border border-revisar/70 bg-revisar-fondo px-3 text-[0.85rem] font-semibold text-revisar-tinta hover:bg-revisar/30">
+            <button type="button" onClick={() => onCambio({ ...r, revisado: true })} className="etiqueta-dudoso min-h-10 border border-revisar">
               Está bien
             </button>
           ) : (
-            <span className="flex items-center gap-1 text-[0.85rem] font-semibold text-confirmado">
+            <span className="flex items-center gap-1 text-[0.9rem] font-semibold text-confirmado">
               <Check className="h-4 w-4" aria-hidden="true" /> Revisado
             </span>
           ))}
       </div>
-      {tipo === "largo" ? (
-        <AreaTexto rows={2} {...comunes} onChange={(e) => cambiar(e.target.value)} />
+      {tipo === "sexo" ? (
+        <div className="flex gap-2" role="radiogroup" aria-labelledby={`${id}-etiqueta`} aria-describedby={ayuda}>
+          {(["F", "M"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="radio"
+              aria-checked={r.valor === s}
+              onFocus={onFoco}
+              onClick={() => cambiar(s)}
+              className={cn(
+                "min-h-[52px] flex-1 rounded-[12px] border font-semibold",
+                r.valor === s ? "border-primario bg-primario-suave text-primario" : pendiente ? "border-revisar bg-revisar-fondo text-tinta" : "border-linea-fuerte bg-superficie text-tinta-suave"
+              )}
+            >
+              {s === "F" ? "Femenino" : "Masculino"}
+            </button>
+          ))}
+        </div>
+      ) : tipo === "largo" ? (
+        <AreaTexto id={id} rows={2} value={r.valor} onFocus={onFoco} onChange={(e) => cambiar(e.target.value)} aria-describedby={ayuda} placeholder={r.baja && !r.valor ? "No se pudo leer. Escríbelo si aparece." : undefined} className={clase} />
       ) : (
-        <Entrada type={tipo === "fecha" ? "date" : "text"} {...comunes} onChange={(e) => cambiar(e.target.value)} />
+        <Entrada
+          id={id}
+          type={tipo === "fecha" ? "date" : "text"}
+          value={r.valor}
+          onFocus={onFoco}
+          onChange={(e) => cambiar(e.target.value)}
+          aria-describedby={ayuda}
+          placeholder={r.baja && !r.valor ? "No se pudo leer. Escríbelo si aparece." : undefined}
+          className={clase}
+        />
       )}
       {pendiente && (
-        <p id={`${id}-ayuda`} className="text-[0.85rem] text-revisar-tinta">
-          La lectura es dudosa. Compárala con el original.
+        <p id={ayuda} className="text-[0.95rem] text-revisar-tinta">
+          Lectura dudosa. Compárala con el original.
         </p>
       )}
     </div>
