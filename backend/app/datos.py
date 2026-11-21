@@ -1,7 +1,7 @@
 """Almacén en memoria con datos INVENTADOS para el demo.
 
 Aviso (C-02): hoy el almacén vive en memoria y se reinicia en cada arranque.
-Pasar a Supabase (Postgres + Storage) es tarea de Luis; ver supabase/esquema.sql.
+Pasar a Supabase (Postgres + Storage) usa backend/supabase/esquema.sql.
 Las semillas están en Python (no leen ../contrato), así que backend/ arranca solo (C-03).
 """
 
@@ -11,10 +11,10 @@ import copy
 import hashlib
 import hmac
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
-from .tiempo import ahora, iso
+from . import tiempo
 
 CENTROS: dict[str, dict[str, Any]] = {
     "c_01": {
@@ -41,6 +41,10 @@ PERSONAL: dict[str, dict[str, Any]] = {
 
 PIN_ROSA = "4821"
 PIN_MATEO = "2580"
+# El ejemplo de Phil (2547896310801) no pasa el dígito verificador: módulo 11 da 3.
+# Este CUI es inventado, mismo correlativo y municipio, con el dígito correcto.
+DPI_ROSA = "2547896330801"
+DPI_MATEO = "TMP-20261121-K7Q4"
 
 
 def hash_pin(pin: str, sal: bytes | None = None) -> str:
@@ -90,6 +94,7 @@ class Almacen:
         self.accesos: list[dict[str, Any]] = []
         self.fallos_pin: dict[str, dict[str, Any]] = {}
         self.fallos_canje: dict[str, dict[str, Any]] = {}
+        self.bitacora: list[dict[str, Any]] = []  # solo se agrega; no hay forma de editarla ni de borrarla
         self._contador = 100
         self._sembrar()
 
@@ -103,7 +108,7 @@ class Almacen:
         self.crear_paciente(
             {
                 "id": "p_12",
-                "dpi": "2547896310801",
+                "dpi": DPI_ROSA,
                 "nombre": "Rosa Batz Tzoc",
                 "fecha_nacimiento": "1984-03-12",
                 "sexo": "F",
@@ -132,7 +137,7 @@ class Almacen:
         self.crear_paciente(
             {
                 "id": "p_13",
-                "dpi": "TMP-20261121-K7Q4",
+                "dpi": DPI_MATEO,
                 "nombre": "Mateo Batz",
                 "fecha_nacimiento": "2023-02-10",
                 "sexo": "M",
@@ -217,7 +222,7 @@ class Almacen:
         actual.update(cambios)
         actual["version"] += 1
         actual["editada_por"] = editor
-        actual["editada_en"] = iso(ahora())
+        actual["editada_en"] = tiempo.iso(tiempo.ahora())
         self.consultas[cid].append(actual)
         self.versiones_motivo[(cid, actual["version"])] = motivo
         return copy.deepcopy(actual)
@@ -251,7 +256,7 @@ class Almacen:
         s = self.sesiones.get(token)
         if not s:
             return None
-        if s["vence"] <= ahora():
+        if s["vence"] <= tiempo.ahora():
             self.sesiones.pop(token, None)
             return None
         return s
@@ -277,7 +282,7 @@ class Almacen:
         return acceso
 
     def acceso_vigente(self, actor_id: str, paciente_id: str, tipos: tuple[str, ...] = ("codigo", "emergencia")) -> dict[str, Any] | None:
-        momento = ahora()
+        momento = tiempo.ahora()
         vigentes = [
             a for a in self.accesos
             if a["actor_id"] == actor_id and a["paciente_id"] == paciente_id and a["tipo"] in tipos and a["hasta"] > momento
@@ -297,12 +302,48 @@ class Almacen:
                 "tipo": a["tipo"],
                 "motivo": a["motivo"],
                 "centro": a["centro"],
-                "desde": iso(a["desde"]),
-                "hasta": iso(a["hasta"]),
+                "desde": tiempo.iso(a["desde"]),
+                "hasta": tiempo.iso(a["hasta"]),
                 "preguntas_hechas": a["preguntas_hechas"],
             }
             for a in lista
         ]
+
+    def dpis(self) -> set[str]:
+        return {versiones[-1]["dpi"] for versiones in self.pacientes.values() if versiones}
+
+    def anotar_bitacora(self, evento: dict[str, Any]) -> dict[str, Any]:
+        """Append-only. No hay método para corregir ni borrar eventos."""
+        registro = {"id": self.nuevo_id("bit"), **evento, "en": tiempo.iso(tiempo.ahora())}
+        self.bitacora.append(registro)
+        return registro
+
+    def _bolsa_fallos(self, tipo: str) -> dict[str, dict[str, Any]]:
+        if tipo == "pin":
+            return self.fallos_pin
+        if tipo == "canje":
+            return self.fallos_canje
+        raise ValueError(tipo)
+
+    def bloqueado(self, tipo: str, clave: str) -> bool:
+        info = self._bolsa_fallos(tipo).get(clave)
+        return bool(info and info.get("hasta") and info["hasta"] > tiempo.ahora())
+
+    def anotar_fallo(self, tipo: str, clave: str) -> bool:
+        """Suma un fallo. A los 5, bloquea 15 minutos. Devuelve True si quedó bloqueado."""
+        bolsa = self._bolsa_fallos(tipo)
+        momento = tiempo.ahora()
+        info = bolsa.get(clave)
+        if not info or (info.get("hasta") and info["hasta"] <= momento):
+            info = {"n": 0, "hasta": None}
+        info["n"] += 1
+        if info["n"] >= 5:
+            info["hasta"] = momento + timedelta(minutes=15)
+        bolsa[clave] = info
+        return bool(info["hasta"] and info["hasta"] > momento)
+
+    def limpiar_fallos(self, tipo: str, clave: str) -> None:
+        self._bolsa_fallos(tipo).pop(clave, None)
 
 
 almacen = Almacen()

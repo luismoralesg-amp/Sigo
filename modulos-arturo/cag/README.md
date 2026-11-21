@@ -13,8 +13,8 @@ escribe ni corrige el expediente.
 El acceso de emergencia no es un modo de este módulo. El backend
 responde 403 `solo_emergencia` antes de llamar a `preguntar`.
 
-Las firmas están en `backend/app/modulos/interfaces.py` (no hay un
-`INTERFACES.md`). Coinciden con este módulo.
+Las firmas están en `backend/app/modulos/interfaces.py` y en
+`modulos-arturo/INTERFACES.md`. Coinciden con este módulo.
 
 Solo datos inventados (Rosa Ajpop, Juan Tecún).
 

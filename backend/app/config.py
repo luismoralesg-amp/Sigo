@@ -21,8 +21,10 @@ class Config(BaseSettings):
     sigo_public_app_url: str = "https://sigo.app"
     # Secreto para firmar URLs de imágenes. Cambialo fuera de desarrollo.
     sigo_secret: str = Field(default="solo-desarrollo-cambiar")
-    # Login de prueba del personal (POST /api/v1/dev/sesion). Solo funciona si sigo_env=desarrollo.
-    sigo_dev_login: bool = True
+    # POST /api/v1/dev/sesion. Apagado si la variable no está.
+    # Aunque el ejemplo diga true, en produccion o demo no enciende:
+    # hace falta SIGO_ENV=desarrollo y SIGO_DEV_LOGIN=true.
+    sigo_dev_login: bool = False
     # Modo demo: el acceso con código dura 2 minutos en vez de 2 horas.
     sigo_modo_demo: bool = False
     # Si es True, un dígito verificador que no cuadra bloquea; si es False, es advertencia (M-01).
@@ -53,6 +55,7 @@ class Config(BaseSettings):
 
     @property
     def dev_login_activo(self) -> bool:
+        # Producción (y demo) ignoran SIGO_DEV_LOGIN. Sin la variable, queda apagado.
         return self.sigo_env == "desarrollo" and self.sigo_dev_login
 
 
