@@ -119,6 +119,7 @@ class Almacen:
             telefono="+502 5555 0101",
             pin=PIN_ROSA,
             debe_cambiar_pin=False,
+            centro_id="c_01",
         )
         for c in (
             _consulta("con_001", "2019-05-20", "c_01", "Dolor de garganta", "Faringitis",
@@ -148,6 +149,7 @@ class Almacen:
             telefono="+502 5555 0101",
             pin=PIN_MATEO,
             debe_cambiar_pin=True,
+            centro_id="c_01",
         )
         self._guardar_consulta_nueva(
             "p_13",
@@ -157,7 +159,7 @@ class Almacen:
 
     # --- pacientes ---
     def crear_paciente(self, datos: dict[str, Any], *, telefono: str | None, pin: str,
-                       debe_cambiar_pin: bool = True) -> dict[str, Any]:
+                       debe_cambiar_pin: bool = True, centro_id: str | None = None) -> dict[str, Any]:
         pid = datos.get("id") or self.nuevo_id("p")
         paciente = {
             "id": pid,
@@ -175,6 +177,8 @@ class Almacen:
             "pin_hash": hash_pin(pin),
             "debe_cambiar_pin": debe_cambiar_pin,
             "telefono": telefono,
+            # Puesto que dio de alta a la persona. None si vino de una semilla vieja sin centro.
+            "centro_id": centro_id,
         }
         self.consultas_por_paciente.setdefault(pid, [])
         return copy.deepcopy(paciente)

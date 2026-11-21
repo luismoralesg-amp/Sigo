@@ -21,7 +21,32 @@ La ley es el contrato de Phil (`docs/contrato-phil-flujo-y-api.txt`): 18 endpoin
 
 `formato_no_soportado` es un 400 con ese código. No se reescribe como `validacion`. Phil no lo enumeraba; la decisión de importación y exportación lo agrega. Un `.accdb` no es formato no soportado: el servidor necesita `mdbtools` y, si el módulo real no está conectado, responde 503 `ia_no_disponible`.
 
-## Pendiente, sin implementar
+## S-09 (alcance de la enfermera)
 
-- S-09: la enfermera no está limitada por centro.
-- P-05: no hay cruce por nombre y fecha para fichas anteriores al DPI. `TMP-AAAAMMDD-XXXX` solo cubre el alta de hoy sin DPI.
+La enfermera ve el expediente completo —Phil: para poder corregir— solo si se cumple una de estas:
+
+1. el paciente es de su centro (`centro_id` al darlo de alta, o en la semilla de Chuicacá);
+2. tiene una consulta en ese centro;
+3. ella atendió esa consulta (`editada_por`).
+
+Rosa y Mateo quedan en el puesto de Ana, así que el demo no cambia. Cada `GET /pacientes/{id}/expediente` de la enfermera se anota en la bitácora que ve la paciente (`tipo: enfermera`) y en el registro interno (`lectura_expediente`). Un intento fuera de alcance no entra a la bitácora de la paciente; queda como `acceso_denegado`.
+
+La exportación no se le abrió. Phil (endpoint 12) la reserva a la paciente. Un `GET /exportar` de la enfermera responde 403 `rol_no_permitido` y también queda en la bitácora interna.
+
+`GET /pacientes/buscar` sigue nacional: si el DPI existe, devuelve el paciente (forma del contrato). Vaciar la lista cuando sí existe haría que el front intente crearlo y reciba 409. El expediente, las versiones, las fichas, las correcciones y los códigos sí están cerrados por centro. La respuesta de búsqueda incluye alergias: es el hueco que se deja para no contradecir a Phil.
+
+## P-05 (fichas anteriores al DPI) — no implementado
+
+No hay endpoint nuevo: Phil no lo trae y no se agregan rutas. Hoy una fila importada sin DPI crea un `TMP-AAAAMMDD-XXXX` y no cruza con nadie. La ficha de foto nace ligada al paciente de la URL.
+
+Cuando se implemente, sin ligar solo:
+
+- Normalizar nombre (minúsculas, sin tildes, espacios colapsados) y comparar `fecha_nacimiento` exacta (`YYYY-MM-DD`).
+- Si hay coincidencias, proponerlas a la enfermera. No llamar `crear_paciente` ni cambiar `paciente_id` por ese cruce.
+- El único guardado sigue siendo `POST /fichas/{id}/confirmar` con `consentimiento: true`. Sin ese Confirmar, la ficha no entra al expediente.
+
+## Inconsistencias que no se tocaron
+
+- El DPI de ejemplo de Phil (`2547896310801`) no pasa el dígito verificador. El demo usa `2547896330801`.
+- `modulos-arturo/INTERFACES.md` dice que el médico con código también exporta. Phil dice que exporta solo la paciente. El backend sigue a Phil.
+- `formato_no_soportado` no está en la tabla de Phil; se documentó arriba y no se reescribe como `validacion`.

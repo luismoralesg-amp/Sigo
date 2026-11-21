@@ -14,9 +14,8 @@ npx create-next-app@latest . --ts --tailwind --app --eslint
 - **Errores:** siempre `{ "error": { "codigo", "mensaje" } }`; mostrá `mensaje` tal cual.
 
 ## Cómo arrancar sin esperar al backend
-1. Usen las respuestas de prueba de `contrato/mocks/` como datos fijos (un `fetch` falso o MSW).
-   Ojo: hoy `contrato/` es la v0; la v1 alineada a Phil (18 endpoints bajo `/api/v1`) se sube antes de las 12:00. Mientras, guíense por los ejemplos JSON del documento de Phil.
-2. Cuando el backend esté arriba: `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1` (local) o la URL del túnel de Cloudflare.
+1. El contrato vigente es `docs/contrato-phil-flujo-y-api.txt`. El OpenAPI v1 generado está en `contrato/openapi-v1.json` (todo bajo `/api/v1`). `contrato/openapi.yaml` y `contrato/mocks/` son la v0 obsoleta: no armen el cliente con eso.
+2. Cuando el backend esté arriba: `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1` (local) o `https://<host>.trycloudflare.com/api/v1` (túnel). El origen del navegador (`localhost:3000`, `https://sigo.vercel.app` o un `*.trycloudflare.com`) ya está en el CORS del API.
 3. Usuarios de prueba (inventados): enfermera Ana Tzul (Puesto de Salud Aldea Chuicacá), médico Dr. Mario Xicará (Hospital Regional de Quetzaltenango), paciente Rosa Batz Tzoc, DPI 2547896310801, PIN 4821.
    El backend de prueba guarda a Rosa con el CUI inventado `2547896330801` (mismo PIN): el `2547896310801` del contrato no pasa el dígito verificador módulo 11 (se espera 3).
 

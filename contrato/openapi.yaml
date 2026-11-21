@@ -1,3 +1,7 @@
+# OBSOLETO — contrato v0 (rutas por DPI). No lo uses para el frontend.
+# La ley vigente es docs/contrato-phil-flujo-y-api.txt.
+# El OpenAPI v1 generado desde FastAPI está en contrato/openapi-v1.json.
+# Regenerar: cd backend && python -m app.exportar_openapi
 openapi: 3.1.0
 info:
   title: SIGO API
