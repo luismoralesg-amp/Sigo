@@ -13,6 +13,14 @@ import { leerToken } from "./token";
 
 const URL_API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 export const USA_MOCKS = process.env.NEXT_PUBLIC_SIGO_MOCKS === "1" || !URL_API;
+/**
+ * Supabase queda como login secundario. Solo se usa con NEXT_PUBLIC_SIGO_AUTH=supabase
+ * y con URL y clave anónima presentes. Si falta alguna, la demo sigue por POST /dev/sesion.
+ */
+export const USA_SUPABASE =
+  process.env.NEXT_PUBLIC_SIGO_AUTH === "supabase" &&
+  Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+  Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 export const BASE = `${URL_API}/api/v1`;
 /** Modo demo del contrato: el acceso por código dura 2 minutos en vez de 2 horas. NEXT_PUBLIC_SIGO_MODO_DEMO=0 lo apaga. */
 export const MODO_DEMO = process.env.NEXT_PUBLIC_SIGO_MODO_DEMO !== "0";
@@ -115,6 +123,27 @@ export type FormatoExportar = (typeof FORMATOS_EXPORTAR)[number];
 export type AccesoAbierto = { paciente_id: string; acceso_vence_en: string };
 export type AccesoEmergencia = AccesoAbierto & { tipo_acceso: "emergencia" };
 
+/**
+ * 200 de POST /dev/sesion. OpenAPI lo declara como objeto sin campos;
+ * { token, vence_en, usuario } está en modulos-arturo/ENTORNO.md.
+ */
+export type SesionDev = { token: string; vence_en: string; usuario: Usuario };
+
+export function sesionDevValida(cuerpo: unknown): cuerpo is SesionDev {
+  if (!cuerpo || typeof cuerpo !== "object") return false;
+  const o = cuerpo as Record<string, unknown>;
+  const usuario = o.usuario;
+  if (!usuario || typeof usuario !== "object") return false;
+  const rol = (usuario as { rol?: unknown }).rol;
+  return (
+    typeof o.token === "string" &&
+    o.token.length > 0 &&
+    typeof o.vence_en === "string" &&
+    o.vence_en.length > 0 &&
+    (rol === "enfermera" || rol === "medico")
+  );
+}
+
 // ---------------------------------------------------------------- las 20 rutas
 
 export const api = {
@@ -124,6 +153,11 @@ export const api = {
   /** 2. POST /auth/paciente (público) */
   entrarPaciente: (datos: { dpi: Identificador; pin: string }) =>
     json<{ token: string; vence_en: string; paciente_id: string }>("POST", "/auth/paciente", { json: datos }),
+  /**
+   * POST /dev/sesion (público). Body exacto: { rol: "enfermera" | "medico" }.
+   * 404 no_existe si el backend no está en SIGO_ENV=desarrollo con SIGO_DEV_LOGIN=true.
+   */
+  sesionDev: (datos: { rol: "enfermera" | "medico" }) => json<SesionDev>("POST", "/dev/sesion", { json: datos }),
   /** 3. PUT /me/pin → 204 */
   cambiarPin: (datos: { pin_actual: string; pin_nuevo: string }) => json<void>("PUT", "/me/pin", { json: datos }),
 

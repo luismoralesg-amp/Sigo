@@ -1,16 +1,17 @@
 /**
  * Dónde vive el token Bearer.
  * - Paciente: el que da POST /auth/paciente, en localStorage para que la PWA la recuerde.
- * - Personal: el access_token de Supabase (con mocks, un token de demo).
+ * - Personal: el token de POST /dev/sesion (origen "dev"). Con NEXT_PUBLIC_SIGO_AUTH=supabase, el access_token de Supabase.
  * Todo envuelto en try/catch: en modo privado o sin almacenamiento, la sesión vive solo en memoria.
  */
 
 export type TipoSesion = "personal" | "paciente";
+export type OrigenSesion = "dev" | "supabase";
 
 const CLAVE = "sigo:sesion";
-let enMemoria: { token: string; tipo: TipoSesion } | null = null;
+let enMemoria: { token: string; tipo: TipoSesion; origen?: OrigenSesion } | null = null;
 
-export function leerSesion(): { token: string; tipo: TipoSesion } | null {
+export function leerSesion(): { token: string; tipo: TipoSesion; origen?: OrigenSesion } | null {
   if (enMemoria) return enMemoria;
   try {
     const crudo = localStorage.getItem(CLAVE);
@@ -25,8 +26,8 @@ export function leerToken(): string | null {
   return leerSesion()?.token ?? null;
 }
 
-export function guardarSesion(token: string, tipo: TipoSesion) {
-  enMemoria = { token, tipo };
+export function guardarSesion(token: string, tipo: TipoSesion, origen?: OrigenSesion) {
+  enMemoria = origen ? { token, tipo, origen } : { token, tipo };
   try {
     localStorage.setItem(CLAVE, JSON.stringify(enMemoria));
   } catch {

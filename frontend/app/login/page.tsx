@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { FormularioEntrada } from "./formulario";
 import { Logo } from "@/components/marca/logo";
 import { PanelMarca } from "@/components/marca/panel";
+import { USA_SUPABASE } from "@/lib/api/cliente";
 
 export const metadata: Metadata = { title: "Entrar" };
 
@@ -15,7 +16,9 @@ export default function PaginaLogin() {
             <Logo tamaño="lg" animado />
           </div>
           <h1 className="titulo mt-8 lg:mt-0">Entrar al puesto o al hospital</h1>
-          <p className="mt-2 text-tinta-suave">Para el personal de salud. Usa el correo de tu centro.</p>
+          <p className="mt-2 text-tinta-suave">
+            {USA_SUPABASE ? "Para el personal de salud. Usa el correo de tu centro." : "Para el personal de salud. Elige la cuenta de tu centro."}
+          </p>
           <FormularioEntrada />
         </div>
       </main>
