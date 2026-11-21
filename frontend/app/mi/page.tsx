@@ -49,7 +49,7 @@ export default function PaginaMiHistorial() {
                 Mis consultas
               </h2>
               {exp.datos.consultas.length ? (
-                <LineaTiempo consultas={exp.datos.consultas} />
+                <LineaTiempo consultas={exp.datos.consultas} corregible={false} />
               ) : (
                 <div className="tarjeta p-5">
                   <ScrollText className="h-7 w-7 text-tinta-suave" strokeWidth={1.75} aria-hidden="true" />

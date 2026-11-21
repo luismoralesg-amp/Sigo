@@ -151,7 +151,7 @@ function Fila({ etiqueta, valor, fuerte }: { etiqueta: string; valor: string | n
   );
 }
 
-function HistorialVersiones({ versiones }: { versiones: Version[] }) {
+export function HistorialVersiones({ versiones }: { versiones: Version[] }) {
   return (
     <ol className="mt-3 space-y-2" aria-label="Versiones de esta consulta">
       {versiones.map((v) => (
