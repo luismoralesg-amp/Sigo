@@ -15,20 +15,21 @@ from typing import Any
 
 import httpx
 
+from sigo_modulos.errores import ErrorModulo
+
 MODELO_DEFAULT = "qwen2.5:7b"
 MODELO_ALTERNO = "llama3.1:8b"
 URL_DEFAULT = "http://localhost:11434"
 KEEP_ALIVE_DEFAULT = "24h"
 
 
-class OllamaNoDisponible(RuntimeError):
+class OllamaNoDisponible(ErrorModulo):
     """Ollama no responde. El backend mapea `codigo` a HTTP 503."""
 
     codigo = "ia_no_disponible"
 
     def __init__(self, mensaje: str = "El asistente no está disponible. Intentá de nuevo.") -> None:
-        super().__init__(mensaje)
-        self.codigo = "ia_no_disponible"
+        super().__init__(mensaje, "ia_no_disponible")
         self.mensaje = mensaje
 
 

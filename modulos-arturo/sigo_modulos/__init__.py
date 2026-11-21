@@ -1,5 +1,9 @@
-"""Módulos de SIGO (exportación y CAG).
+"""Módulos de Arturo para SIGO.
 
-El backend elige la implementación con SIGO_EXPORT_IMPL / SIGO_CAG_IMPL
-y llama a las funciones de este paquete. Ningún lado importa código del otro.
+El backend los carga con SIGO_<MODULO>_IMPL=real y no al revés:
+este paquete no importa nada de backend/.
 """
+
+from .errores import ErrorModulo
+
+__all__ = ["ErrorModulo"]

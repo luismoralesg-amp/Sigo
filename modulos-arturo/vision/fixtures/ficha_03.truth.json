@@ -1,0 +1,59 @@
+{
+  "paciente": {
+    "nombre": {
+      "valor": "Elena Ruth Sac Lopez",
+      "confianza": "alta"
+    },
+    "dpi": {
+      "valor": "9334455667788",
+      "confianza": "alta"
+    },
+    "fecha_nacimiento": {
+      "valor": "1990-12-03",
+      "confianza": "alta"
+    },
+    "sexo": {
+      "valor": "F",
+      "confianza": "alta"
+    },
+    "comunidad": {
+      "valor": "Aldea Las Flores, Chimaltenango",
+      "confianza": "alta"
+    },
+    "alergias": {
+      "valor": [
+        "Penicilina"
+      ],
+      "confianza": "alta"
+    },
+    "condiciones_cronicas": {
+      "valor": [],
+      "confianza": "alta"
+    }
+  },
+  "consultas": [
+    {
+      "fecha": {
+        "valor": "2026-01-21",
+        "confianza": "alta"
+      },
+      "motivo": {
+        "valor": "Dolor de garganta",
+        "confianza": "alta"
+      },
+      "diagnostico": {
+        "valor": "Faringitis",
+        "confianza": "alta"
+      },
+      "tratamiento": {
+        "valor": "Azitromicina 500 mg",
+        "confianza": "alta"
+      },
+      "vacunas": {
+        "valor": [],
+        "confianza": "alta"
+      },
+      "pagina": 0
+    }
+  ]
+}

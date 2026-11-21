@@ -23,7 +23,9 @@ contenido, content_type, nombre = exportar(expediente, "pdf")
 | `ExportError.codigo` | HTTP (lo mapea el backend) |
 | --- | --- |
 | `formato_no_soportado` | 400 |
-| `formato_no_disponible` | 503 (Pandoc o WeasyPrint ausentes, o Pandoc falló) |
+| `formato_no_disponible` | 503 (Pandoc o WeasyPrint ausentes, Pandoc falló, o pasó el tiempo límite) |
+
+Pandoc se corta a los 30 segundos. `SIGO_PANDOC_TIMEOUT` cambia ese límite (segundos). Si vence, el código es `formato_no_disponible`.
 
 El nombre sugerido es `sigo-<id>.<formato>` (por ejemplo `sigo-p_12.pdf`).
 

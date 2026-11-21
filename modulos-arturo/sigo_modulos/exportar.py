@@ -35,6 +35,7 @@ pypandoc no se usa: se llama a /usr/bin/pandoc por subprocess.
 from __future__ import annotations
 
 import html
+import os
 import re
 import shutil
 import subprocess
@@ -45,6 +46,8 @@ from urllib.parse import urlparse
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
+
+from .errores import ErrorModulo
 
 FORMATOS = ("txt", "docx", "pdf", "xlsx", "md", "html")
 
@@ -70,12 +73,11 @@ hr { border: none; border-top: 1px solid #d0d7de; }
 """.strip()
 
 
-class ExportError(Exception):
+class ExportError(ErrorModulo):
     """Error de exportación. El backend mapea `codigo` al HTTP."""
 
-    def __init__(self, mensaje: str, *, codigo: str):
-        super().__init__(mensaje)
-        self.codigo = codigo
+    def __init__(self, mensaje: str, *, codigo: str) -> None:
+        super().__init__(mensaje, codigo)
 
 
 def _texto(valor: Any, vacio: str = "—") -> str:
@@ -311,8 +313,25 @@ def expediente_a_markdown(expediente: dict[str, Any]) -> str:
     return "\n".join(lineas)
 
 
+PANDOC_TIMEOUT_DEFAULT = 30.0
+
+
 def _pandoc_disponible() -> bool:
     return shutil.which("pandoc") is not None
+
+
+def _pandoc_timeout() -> float:
+    """Segundos máximos de Pandoc. SIGO_PANDOC_TIMEOUT, 30 si no está o no es válido."""
+    crudo = os.environ.get("SIGO_PANDOC_TIMEOUT", "").strip()
+    if not crudo:
+        return PANDOC_TIMEOUT_DEFAULT
+    try:
+        valor = float(crudo)
+    except ValueError:
+        return PANDOC_TIMEOUT_DEFAULT
+    if valor <= 0:
+        return PANDOC_TIMEOUT_DEFAULT
+    return valor
 
 
 def _correr_pandoc(markdown: str, destino: Path | None, formato: str, extra: list[str] | None = None) -> str:
@@ -337,7 +356,19 @@ def _correr_pandoc(markdown: str, destino: Path | None, formato: str, extra: lis
             cmd.extend(extra)
         if destino is not None:
             cmd.extend(["-o", str(destino)])
-        resultado = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        try:
+            resultado = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=_pandoc_timeout(),
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise ExportError(
+                f"Pandoc superó el tiempo límite ({_pandoc_timeout():g} s) al generar {formato}.",
+                codigo="formato_no_disponible",
+            ) from exc
         if resultado.returncode != 0:
             raise ExportError(
                 f"Pandoc falló ({formato}): {resultado.stderr.strip()}",

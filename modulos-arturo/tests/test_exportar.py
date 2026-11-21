@@ -1,4 +1,5 @@
 import re
+import subprocess
 from io import BytesIO
 from pathlib import Path
 
@@ -56,6 +57,28 @@ def test_formato_invalido():
     with pytest.raises(ExportError) as exc:
         exportar(EXPEDIENTE_ROSA, "exe")
     assert exc.value.codigo == "formato_no_soportado"
+
+
+def test_pandoc_timeout_es_formato_no_disponible(monkeypatch):
+    monkeypatch.delenv("SIGO_PANDOC_TIMEOUT", raising=False)
+    vistos: dict[str, float] = {}
+
+    def lento(cmd, **kwargs):
+        vistos["timeout"] = kwargs.get("timeout")
+        raise subprocess.TimeoutExpired(cmd, kwargs.get("timeout") or 0)
+
+    monkeypatch.setattr("sigo_modulos.exportar._pandoc_disponible", lambda: True)
+    monkeypatch.setattr("sigo_modulos.exportar.subprocess.run", lento)
+    with pytest.raises(ExportError) as exc:
+        exportar(EXPEDIENTE_ROSA, "docx")
+    assert exc.value.codigo == "formato_no_disponible"
+    assert vistos["timeout"] == 30.0
+
+    monkeypatch.setenv("SIGO_PANDOC_TIMEOUT", "2")
+    with pytest.raises(ExportError) as exc_env:
+        exportar(EXPEDIENTE_ROSA, "html")
+    assert exc_env.value.codigo == "formato_no_disponible"
+    assert vistos["timeout"] == 2.0
 
 
 def test_formato_no_disponible_sin_pandoc(monkeypatch):
