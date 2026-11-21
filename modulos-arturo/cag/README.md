@@ -4,12 +4,14 @@ Asistente de solo lectura para `POST /pacientes/{id}/preguntar`.
 La función que carga el backend es `sigo_modulos.cag.preguntar`
 (`SIGO_CAG_IMPL=real`). Este paquete no importa el backend.
 
-Al preguntar se carga el expediente completo en el contexto (en
-emergencia, solo alergias y condiciones crónicas) y se reúsa la caché
-KV de Ollama: el mensaje de sistema es un prefijo idéntico por
+Al preguntar se carga el expediente que llega en el contexto y se reúsa
+la caché KV de Ollama: el mensaje de sistema es un prefijo idéntico por
 paciente y modo, con `keep_alive` largo. Cada respuesta cita la fuente.
 Si la cita no existe en el expediente, se descarta. El CAG nunca
 escribe ni corrige el expediente.
+
+El acceso de emergencia no es un modo de este módulo. El backend
+responde 403 `solo_emergencia` antes de llamar a `preguntar`.
 
 Las firmas están en `backend/app/modulos/interfaces.py` (no hay un
 `INTERFACES.md`). Coinciden con este módulo.
@@ -60,10 +62,10 @@ pytest cag/tests
 ```
 
 Cubre: fuentes válidas se conservan; una cita inventada se descarta; una
-pregunta fuera del expediente lo dice; en emergencia el contexto no trae
-consultas y una pregunta ajena responde que no está disponible; el
-expediente no se muta; si Ollama no responde, `codigo == "ia_no_disponible"`;
-el prefijo de sistema de dos preguntas seguidas es idéntico.
+pregunta fuera del expediente lo dice; la alergia cita la ficha confirmada
+por última vez y un dato importado cita la fila; el expediente no se muta;
+si Ollama no responde, `codigo == "ia_no_disponible"`; el prefijo de
+sistema de dos preguntas seguidas es idéntico.
 
 ## Cómo medir latencia
 
@@ -92,22 +94,23 @@ export OLLAMA_URL=http://127.0.0.1:11434
 export OLLAMA_MODEL=qwen2.5:7b
 ```
 
-## Decisiones abiertas (las revisa Alphagod)
+## Citas de alergias y condiciones crónicas
 
-1. **Emergencia.** Si el expediente trae `tipo_acceso="emergencia"`,
-   `emergencia=True` o `acceso.tipo="emergencia"`, este módulo contesta
-   recortado a alergias y condiciones crónicas. Cualquier otra pregunta
-   responde exactamente `no está disponible en acceso de emergencia` y
-   `fuentes: []`. El contrato de Phil dice otra cosa: el asistente en
-   emergencia debe responder **403** `solo_emergencia`. El 403, si se
-   confirma, lo corta el endpoint antes de llamar a `preguntar`. Si el
-   backend ya mandó el expediente filtrado y sin marca, se usa tal cual
-   y lo que no esté se responde con `Eso no está en el expediente.`
+`campo` es `paciente.alergias` o `paciente.condiciones_cronicas`.
 
-2. **Cómo citar alergias y condiciones crónicas.** Esos campos viven en
-   el paciente, no en una consulta, y `Fuente` exige `consulta_id`.
-   Hoy se cita así: `consulta_id=""`, `version` igual a la del paciente,
-   `original_url=""`, `campo` = `alergias` o `condiciones_cronicas`.
+- Si el ítem apunta a una ficha (`consulta_id`, `ficha_id`, o `fuente`
+  igual al id de una consulta), la cita usa el id de esa ficha, su
+  `version` y su `original_url`. Si hay varias, queda la de `editada_en`
+  o `fecha` más reciente.
+- Si no hay ficha y el dato es importado (`fuente` o `origen` en
+  `importacion` / `importado`, o trae `fila` / `fila_id`), `consulta_id`
+  es el id de esa fila y `original_url` es null. `fila` es el entero de
+  `FilaImportada`; `fila_id` es un id de texto.
+
+El `Expediente` de Phil guarda esos campos como `string[]` y no trae la
+ficha de origen. En ese caso la cita usa la consulta más reciente del
+expediente (el único registro con id, versión y foto). Es una
+aproximación, no la ficha que registró el dato.
 
 ## Dependencias
 

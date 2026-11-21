@@ -19,7 +19,6 @@ from cag.expediente import armar_prefijo, recorte_emergencia, serializar
 from cag.fixtures import ROSA
 from cag.asistente import extraer_json, validar_fuentes
 from sigo_modulos.cag import (
-    MENSAJE_EMERGENCIA,
     MENSAJE_FUERA,
     OllamaNoDisponible,
     preguntar,
@@ -72,11 +71,12 @@ FUENTE_AMOX = {
     "campo": "tratamiento",
 }
 
+# con_001 es la ficha donde el expediente inventado dice que se confirmó la alergia.
 FUENTE_ALERGIA = {
-    "consulta_id": "",
+    "consulta_id": "con_001",
     "version": 1,
-    "original_url": "",
-    "campo": "alergias",
+    "original_url": "https://archivos.sigo.gt/inventados/rosa/con_001.jpg",
+    "campo": "paciente.alergias",
 }
 
 
@@ -181,7 +181,11 @@ def test_original_url_y_version_se_corrigen_si_la_consulta_existe() -> None:
     assert fuentes == [FUENTE_AMOX]
 
 
-def test_emergencia_por_marca_tipo_acceso_filtra_contexto(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_marca_de_emergencia_no_mete_consultas_en_el_prefijo(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Defensa interna: si la marca llega igual, el prefijo no lleva consultas.
+
+    No es un modo público. El 403 lo pone el backend antes de llamar.
+    """
     prefijo_visto: dict[str, str] = {}
 
     def salida(prefijo: str, pregunta: str) -> str:
@@ -189,7 +193,7 @@ def test_emergencia_por_marca_tipo_acceso_filtra_contexto(monkeypatch: pytest.Mo
         return json.dumps(
             {
                 "respuesta": "Rosa Ajpop es alérgica a la penicilina.",
-                "fuentes": [FUENTE_ALERGIA],
+                "fuentes": [{"consulta_id": "", "version": 1, "original_url": "", "campo": "alergias"}],
             },
             ensure_ascii=False,
         )
@@ -201,11 +205,11 @@ def test_emergencia_por_marca_tipo_acceso_filtra_contexto(monkeypatch: pytest.Mo
     texto = prefijo_visto["texto"]
     assert "ALERGIAS: penicilina" in texto
     assert "CONDICIONES_CRONICAS: hipertensión" in texto
+    assert "con_001" not in texto
     assert "con_003" not in texto
     assert "Amoxicilina" not in texto
     assert "COVID-19" not in texto
-    assert "CONSULTAS: (no disponibles en acceso de emergencia)" in texto
-    assert "acceso de emergencia" in texto.lower()
+    assert "acceso de emergencia" not in texto.lower()
     assert out["fuentes"] == [FUENTE_ALERGIA]
     assert "penicilina" in out["respuesta"].lower()
 
@@ -218,7 +222,7 @@ def test_emergencia_por_marca_tipo_acceso_filtra_contexto(monkeypatch: pytest.Mo
         {"acceso": {"tipo": "emergencia"}},
     ],
 )
-def test_emergencia_pregunta_ajena_no_esta_disponible(monkeypatch: pytest.MonkeyPatch, marca: dict) -> None:
+def test_marca_de_emergencia_descarta_cita_de_consulta(monkeypatch: pytest.MonkeyPatch, marca: dict) -> None:
     cliente = ClienteFalso(
         {
             "respuesta": "La última vacuna fue el COVID-19 (refuerzo) el 2023-09-01.",
@@ -236,13 +240,14 @@ def test_emergencia_pregunta_ajena_no_esta_disponible(monkeypatch: pytest.Monkey
     expediente = copy.deepcopy(ROSA)
     expediente.update(marca)
     out = preguntar(expediente, "¿Cuándo fue su última vacuna?")
-    assert out["respuesta"] == MENSAJE_EMERGENCIA
+    assert out["respuesta"] == MENSAJE_FUERA
     assert out["fuentes"] == []
-    # Se corta antes de llamar al modelo.
-    assert cliente.preguntas == []
+    assert cliente.prefijos
+    assert "con_002" not in cliente.prefijos[0]
+    assert "COVID-19" not in cliente.prefijos[0]
 
 
-def test_emergencia_cita_de_consulta_se_descarta(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_marca_de_emergencia_no_devuelve_el_tratamiento(monkeypatch: pytest.MonkeyPatch) -> None:
     cliente = ClienteFalso(
         {
             "respuesta": "Le recetaron amoxicilina en noviembre de 2024.",
@@ -252,16 +257,15 @@ def test_emergencia_cita_de_consulta_se_descarta(monkeypatch: pytest.MonkeyPatch
     _inyectar(monkeypatch, cliente)
     expediente = copy.deepcopy(ROSA)
     expediente["tipo_acceso"] = "emergencia"
-    # Pregunta ambigua, sin palabras de vacuna/consulta, para forzar la llamada al modelo.
     out = preguntar(expediente, "¿Qué le dieron la última vez que vino?")
-    assert out["respuesta"] == MENSAJE_EMERGENCIA
+    assert out["respuesta"] == MENSAJE_FUERA
     assert out["fuentes"] == []
 
 
-def test_expediente_ya_filtrado_sin_marca(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Si el backend ya recortó el expediente y no manda marca, se usa tal cual."""
+def test_sin_marca_se_usa_el_expediente_que_llego(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sin marca no hay recorte: si el expediente ya venía sin consultas, se usa tal cual."""
     filtrado = recorte_emergencia(ROSA)
-    filtrado["tipo_acceso"] = None  # sin marca
+    filtrado["tipo_acceso"] = None
     _inyectar(
         monkeypatch,
         ClienteFalso(
@@ -279,10 +283,153 @@ def test_expediente_ya_filtrado_sin_marca(monkeypatch: pytest.MonkeyPatch) -> No
         ),
     )
     out = preguntar(filtrado, "¿Cuándo fue su última vacuna?")
-    # No hay consultas en lo que llegó: la cita se descarta y se dice que no está.
     assert out["fuentes"] == []
     assert out["respuesta"] == MENSAJE_FUERA
-    assert out["respuesta"] != MENSAJE_EMERGENCIA
+
+
+def test_alergia_cita_la_ultima_ficha_que_la_confirmo(monkeypatch: pytest.MonkeyPatch) -> None:
+    expediente = {
+        "paciente": {
+            "id": "p_20",
+            "version": 2,
+            "nombre": "Ana Inventada",
+            "alergias": [
+                {"sustancia": "penicilina", "consulta_id": "f_1"},
+                {"sustancia": "penicilina", "consulta_id": "f_2"},
+            ],
+            "condiciones_cronicas": [],
+        },
+        "consultas": [
+            {
+                "id": "f_1",
+                "version": 1,
+                "fecha": "2020-01-01",
+                "editada_en": "2020-01-02T10:00:00-06:00",
+                "original_url": "https://archivos.sigo.gt/inventados/f_1.jpg",
+                "motivo": "Registro de alergia",
+            },
+            {
+                "id": "f_2",
+                "version": 3,
+                "fecha": "2024-05-01",
+                "editada_en": "2024-05-02T10:00:00-06:00",
+                "original_url": "https://archivos.sigo.gt/inventados/f_2.jpg",
+                "motivo": "Se confirma la alergia",
+            },
+        ],
+    }
+    _inyectar(
+        monkeypatch,
+        ClienteFalso(
+            {
+                "respuesta": "Es alérgica a la penicilina.",
+                "fuentes": [{"consulta_id": "f_1", "version": 99, "original_url": "", "campo": "alergias"}],
+            }
+        ),
+    )
+    out = preguntar(expediente, "¿A qué es alérgica?")
+    assert out["fuentes"] == [
+        {
+            "consulta_id": "f_2",
+            "version": 3,
+            "original_url": "https://archivos.sigo.gt/inventados/f_2.jpg",
+            "campo": "paciente.alergias",
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("item", "consulta_id"),
+    [
+        ({"nombre": "asma", "fuente": "importacion", "fila": 4}, "4"),
+        ({"nombre": "asma", "fuente": "importado", "fila_id": "imp_12"}, "imp_12"),
+    ],
+)
+def test_condicion_cronica_importada_cita_la_fila(
+    monkeypatch: pytest.MonkeyPatch, item: dict, consulta_id: str
+) -> None:
+    expediente = {
+        "paciente": {
+            "id": "p_21",
+            "version": 1,
+            "nombre": "Luis Inventado",
+            "alergias": [],
+            "condiciones_cronicas": [item],
+        },
+        "consultas": [],
+    }
+    _inyectar(
+        monkeypatch,
+        ClienteFalso(
+            {
+                "respuesta": "Tiene asma registrada.",
+                "fuentes": [
+                    {
+                        "consulta_id": "no-es-la-fila",
+                        "version": 9,
+                        "original_url": "https://inventada.invalid/x.jpg",
+                        "campo": "condiciones_cronicas",
+                    }
+                ],
+            }
+        ),
+    )
+    out = preguntar(expediente, "¿Tiene alguna condición crónica?")
+    assert out["fuentes"] == [
+        {
+            "consulta_id": consulta_id,
+            "version": 1,
+            "original_url": None,
+            "campo": "paciente.condiciones_cronicas",
+        }
+    ]
+
+
+def test_alergia_sin_puntero_usa_la_consulta_mas_reciente(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Phil guarda alergias como string[]: no hay ficha de origen en el modelo."""
+    expediente = {
+        "paciente": {
+            "id": "p_22",
+            "version": 1,
+            "nombre": "Marta Inventada",
+            "alergias": ["ibuprofeno"],
+            "condiciones_cronicas": [],
+        },
+        "consultas": [
+            {
+                "id": "c_vieja",
+                "version": 1,
+                "fecha": "2019-01-01",
+                "editada_en": "2019-01-02T10:00:00-06:00",
+                "original_url": "https://archivos.sigo.gt/inventados/vieja.jpg",
+            },
+            {
+                "id": "c_nueva",
+                "version": 2,
+                "fecha": "2024-06-01",
+                "editada_en": "2024-06-02T10:00:00-06:00",
+                "original_url": "https://archivos.sigo.gt/inventados/nueva.jpg",
+            },
+        ],
+    }
+    _inyectar(
+        monkeypatch,
+        ClienteFalso(
+            {
+                "respuesta": "Figura alergia a ibuprofeno.",
+                "fuentes": [{"consulta_id": "", "version": 1, "original_url": "", "campo": "paciente.alergias"}],
+            }
+        ),
+    )
+    out = preguntar(expediente, "¿A qué es alérgica?")
+    assert out["fuentes"] == [
+        {
+            "consulta_id": "c_nueva",
+            "version": 2,
+            "original_url": "https://archivos.sigo.gt/inventados/nueva.jpg",
+            "campo": "paciente.alergias",
+        }
+    ]
 
 
 def test_no_muta_el_expediente(monkeypatch: pytest.MonkeyPatch) -> None:

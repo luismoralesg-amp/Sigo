@@ -6,7 +6,6 @@ del mismo paciente y modo, para que Ollama reúse la caché KV.
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 CAMPOS_CONSULTA = (
@@ -18,9 +17,21 @@ CAMPOS_CONSULTA = (
     "vacunas",
     "original_url",
 )
-CAMPOS_PACIENTE = ("alergias", "condiciones_cronicas")
+# El modelo puede decir "alergias" o el campo canónico. La cita sale con el canónico.
+CAMPOS_PACIENTE = (
+    "alergias",
+    "condiciones_cronicas",
+    "paciente.alergias",
+    "paciente.condiciones_cronicas",
+)
+CAMPO_FUENTE = {
+    "alergias": "paciente.alergias",
+    "paciente.alergias": "paciente.alergias",
+    "condiciones_cronicas": "paciente.condiciones_cronicas",
+    "paciente.condiciones_cronicas": "paciente.condiciones_cronicas",
+}
+_IMPORTADO = {"importacion", "importado", "importada"}
 
-MENSAJE_EMERGENCIA = "no está disponible en acceso de emergencia"
 MENSAJE_FUERA = "Eso no está en el expediente."
 
 
@@ -62,10 +73,11 @@ def es_emergencia(tipo_acceso: str | None = None, expediente: dict[str, Any] | N
 
 
 def recorte_emergencia(expediente: dict[str, Any]) -> dict[str, Any]:
-    """Solo alergias y condiciones crónicas (regla de acceso de emergencia).
+    """Defensa interna si llega una marca de emergencia.
 
-    Se deja el id del paciente para la clave de caché y para citar `version`.
-    No se incluyen consultas, vacunas, tratamientos ni alertas de medicamentos.
+    El 403 `solo_emergencia` lo responde el backend antes de llamar a
+    `preguntar`. Esto no es un modo público: solo evita que el prefijo
+    lleve consultas, vacunas o tratamientos cuando la marca igual aparece.
     """
     pac = expediente.get("paciente") or {}
     return {
@@ -96,13 +108,26 @@ def _nombre_centro(centro: Any) -> str:
     return "" if centro is None else str(centro)
 
 
+def _texto_item(valor: Any) -> str:
+    """Texto visible de un ítem. No vuelca ids de ficha ni de fila al prefijo."""
+    if isinstance(valor, dict):
+        for clave in ("sustancia", "nombre", "texto", "valor"):
+            if valor.get(clave):
+                return str(valor[clave])
+        return _nombre_centro(valor)
+    if valor is None:
+        return ""
+    return str(valor)
+
+
 def _compactar(valor: Any) -> str:
     if valor is None or valor == [] or valor == "":
         return "—"
     if isinstance(valor, list):
-        return ", ".join(str(v) for v in valor) if valor else "—"
+        partes = [p for p in (_texto_item(v) for v in valor) if p]
+        return ", ".join(partes) if partes else "—"
     if isinstance(valor, dict):
-        return _nombre_centro(valor) or json.dumps(valor, ensure_ascii=False, separators=(",", ":"))
+        return _texto_item(valor) or "—"
     return str(valor)
 
 
@@ -118,7 +143,8 @@ def serializar(expediente: dict[str, Any], tipo_acceso: str | None = None) -> st
         f"CONDICIONES_CRONICAS: {_compactar(pac.get('condiciones_cronicas'))}",
     ]
     if es_emergencia(tipo_acceso):
-        lineas.append("CONSULTAS: (no disponibles en acceso de emergencia)")
+        # Misma línea que un expediente sin consultas: el prefijo no anuncia un modo.
+        lineas.append("CONSULTAS: (ninguna)")
         return "\n".join(lineas)
 
     consultas = list(expediente.get("consultas") or [])
@@ -159,22 +185,159 @@ def armar_prefijo(expediente: dict[str, Any], tipo_acceso: str | None = None) ->
         "Cada afirmación debe citar su fuente.",
         "Respondé SOLO un JSON con esta forma exacta, sin markdown:",
         '{"respuesta":"...","fuentes":[{"consulta_id":"...","version":1,"original_url":"...","campo":"..."}]}',
-        "campo debe ser uno de: fecha, centro, motivo, diagnostico, tratamiento, vacunas, alergias, condiciones_cronicas.",
-        'Para alergias o condiciones crónicas del paciente (no de una consulta), usá consulta_id "", version igual a la version del paciente y original_url "".',
+        "campo de una consulta: fecha, centro, motivo, diagnostico, tratamiento, vacunas u original_url.",
+        'Para alergias del paciente el campo es "paciente.alergias".',
+        'Para condiciones crónicas el campo es "paciente.condiciones_cronicas".',
+        "En esas dos citas el servidor pone consulta_id, version y original_url; no los inventes.",
         "DATOS INVENTADOS PARA EL DEMO. No es un paciente real.",
     ]
-    if es_emergencia(tipo_acceso):
-        reglas.append(
-            'MODO: acceso de emergencia. Solo podés usar alergias y condiciones_cronicas. '
-            "Si la pregunta pide cualquier otra cosa (consultas, vacunas, tratamientos, "
-            "fechas de visita, medicamentos recetados, diagnósticos, datos de identificación), "
-            f'la respuesta debe ser exactamente "{MENSAJE_EMERGENCIA}" y fuentes debe ser [].'
-        )
     return "\n".join(reglas) + "\n\nEXPEDIENTE:\n" + serializar(expediente, tipo_acceso)
 
 
 def indice_consultas(expediente: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {str(c["id"]): c for c in (expediente.get("consultas") or []) if c.get("id")}
+
+
+def _items_paciente(expediente: dict[str, Any], corto: str) -> list[Any]:
+    pac = expediente.get("paciente") or {}
+    alertas = expediente.get("alertas") or {}
+    crudo = pac.get(corto)
+    if not crudo:
+        crudo = alertas.get(corto)
+    if not crudo:
+        return []
+    if isinstance(crudo, str):
+        return [crudo]
+    return list(crudo)
+
+
+def _marca_importado(item: dict[str, Any]) -> str:
+    marca = item.get("fuente") if isinstance(item.get("fuente"), str) else ""
+    origen = item.get("origen")
+    if not marca and isinstance(origen, str):
+        marca = origen
+    return marca.strip().lower()
+
+
+def _es_importado(item: dict[str, Any]) -> bool:
+    if str(item.get("consulta_id") or item.get("ficha_id") or "").strip():
+        return False
+    if _marca_importado(item) in _IMPORTADO:
+        return True
+    return any(item.get(clave) is not None for clave in ("fila", "fila_id", "importacion_id"))
+
+
+def _id_fila(item: dict[str, Any]) -> str | None:
+    """Id de la fila importada. `FilaImportada.fila` es un entero; `fila_id` es texto."""
+    for clave in ("fila_id", "importacion_id", "fila"):
+        if item.get(clave) is not None and str(item.get(clave)).strip() != "":
+            return str(item[clave]).strip()
+    origen = item.get("origen")
+    if isinstance(origen, dict):
+        for clave in ("fila_id", "importacion_id", "fila", "id"):
+            if origen.get(clave) is not None and str(origen.get(clave)).strip() != "":
+                return str(origen[clave]).strip()
+    return None
+
+
+def _momento(consulta: dict[str, Any]) -> tuple[str, int, str]:
+    cuando = str(consulta.get("editada_en") or consulta.get("fecha") or "")
+    return (cuando, int(consulta.get("version") or 0), str(consulta.get("id") or ""))
+
+
+def _mas_reciente(consultas: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not consultas:
+        return None
+    return max(consultas, key=_momento)
+
+
+def _fuente_ficha(consulta: dict[str, Any], campo: str) -> dict[str, Any]:
+    url = consulta.get("original_url")
+    return {
+        "consulta_id": str(consulta["id"]),
+        "version": int(consulta.get("version") or 1),
+        "original_url": "" if url is None else str(url),
+        "campo": campo,
+    }
+
+
+def resolver_origen(expediente: dict[str, Any], campo: str) -> dict[str, Any] | None:
+    """Arma la Fuente de una alergia o condición crónica.
+
+    El Expediente de Phil guarda esos datos como `string[]` en el paciente
+    y no dice en qué ficha se confirmaron. Lo más cercano que sí existe:
+
+    1. Un ítem objeto con `consulta_id` o `ficha_id` (o `fuente` igual al id
+       de una consulta del expediente). Esa es la ficha. Si hay varias, queda
+       la de `editada_en` o `fecha` más reciente. `version` y `original_url`
+       salen de esa consulta.
+    2. Si no hay ficha y el ítem viene de importación (`fuente` o `origen` en
+       importacion/importado, o trae `fila` / `fila_id`, como `FilaImportada`),
+       `consulta_id` es el id de esa fila y `original_url` es null.
+    3. Si solo hay textos, sin puntero: la consulta más reciente del
+       expediente (único registro con id, versión y foto). Es una aproximación,
+       no la ficha que registró el dato.
+    """
+    canonico = CAMPO_FUENTE.get(campo)
+    if not canonico:
+        return None
+    corto = "alergias" if canonico.endswith("alergias") else "condiciones_cronicas"
+    consultas = indice_consultas(expediente)
+    items = _items_paciente(expediente, corto)
+    if not items:
+        return None
+
+    fichas: list[dict[str, Any]] = []
+    importados: list[tuple[str, dict[str, Any]]] = []
+    hay_texto = False
+    for item in items:
+        if not isinstance(item, dict):
+            hay_texto = True
+            continue
+        ficha_id = str(item.get("consulta_id") or item.get("ficha_id") or "").strip()
+        origen = item.get("origen")
+        if not ficha_id and isinstance(origen, dict):
+            ficha_id = str(origen.get("consulta_id") or origen.get("ficha_id") or "").strip()
+        fuente = item.get("fuente")
+        if not ficha_id and isinstance(fuente, str) and fuente in consultas:
+            ficha_id = fuente
+        if ficha_id and ficha_id in consultas:
+            fichas.append(consultas[ficha_id])
+            continue
+        if _es_importado(item):
+            fila = _id_fila(item)
+            if not fila:
+                continue
+            version = item.get("version")
+            if version is None and isinstance(origen, dict):
+                version = origen.get("version")
+            importados.append(
+                (
+                    str(item.get("registrada_en") or ""),
+                    {
+                        "consulta_id": fila,
+                        "version": int(version or 1),
+                        "original_url": None,
+                        "campo": canonico,
+                    },
+                )
+            )
+            continue
+        hay_texto = True
+
+    if fichas:
+        return _fuente_ficha(_mas_reciente(fichas), canonico)  # type: ignore[arg-type]
+    if importados and not hay_texto:
+        importados.sort(key=lambda par: par[0])
+        return importados[-1][1]
+    if hay_texto:
+        reciente = _mas_reciente(list(consultas.values()))
+        if reciente is not None:
+            return _fuente_ficha(reciente, canonico)
+    if importados:
+        importados.sort(key=lambda par: par[0])
+        return importados[-1][1]
+    return None
 
 
 def clave_cache(expediente: dict[str, Any], tipo_acceso: str | None = None) -> str:

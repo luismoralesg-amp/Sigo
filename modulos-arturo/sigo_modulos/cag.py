@@ -19,14 +19,12 @@ from typing import Any
 
 from cag.ollama_cliente import OllamaNoDisponible
 from cag.asistente import (
-    MENSAJE_EMERGENCIA,
     MENSAJE_FUERA,
     precalentar as _precalentar,
     preguntar as _preguntar,
 )
 
 __all__ = [
-    "MENSAJE_EMERGENCIA",
     "MENSAJE_FUERA",
     "OllamaNoDisponible",
     "precalentar",
@@ -37,10 +35,8 @@ __all__ = [
 def preguntar(expediente: dict, pregunta: str) -> dict[str, Any]:
     """Responde una pregunta sobre el expediente, con fuentes verificadas.
 
-    El modo emergencia llega ya filtrado en el expediente, o con una marca
-    (`tipo_acceso="emergencia"`, `emergencia=True` o `acceso.tipo="emergencia"`).
-    Si hay marca, este módulo recorta a alergias y condiciones crónicas.
-    Nunca escribe el expediente.
+    No implementa el acceso de emergencia: ese 403 lo responde el backend
+    antes de llamar aquí. Nunca escribe el expediente.
     """
     return _preguntar(expediente, pregunta)
 

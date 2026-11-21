@@ -10,14 +10,12 @@ Este paquete (`cag`) es la implementación interna que usa esa función.
 
 from .ollama_cliente import OllamaCliente, OllamaNoDisponible
 from .asistente import (
-    MENSAJE_EMERGENCIA,
     MENSAJE_FUERA,
     precalentar,
     preguntar,
 )
 
 __all__ = [
-    "MENSAJE_EMERGENCIA",
     "MENSAJE_FUERA",
     "OllamaCliente",
     "OllamaNoDisponible",

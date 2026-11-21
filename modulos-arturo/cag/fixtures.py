@@ -32,12 +32,14 @@ ROSA: dict[str, Any] = {
         "fecha_nacimiento": "1978-03-12",
         "sexo": "F",
         "comunidad": "Chichicastenango",
-        "alergias": ["penicilina"],
+        # La ficha que confirmó la alergia es con_001. Phil no guarda este
+        # puntero en string[]; va en el ítem, que es el campo más cercano.
+        "alergias": [{"sustancia": "penicilina", "consulta_id": "con_001"}],
         "condiciones_cronicas": ["hipertensión"],
         "version": 1,
     },
     "alertas": {
-        "alergias": ["penicilina"],
+        "alergias": [{"sustancia": "penicilina", "consulta_id": "con_001"}],
         "condiciones_cronicas": ["hipertensión"],
         "medicamentos": ["Amoxicilina 500 mg", "Losartán 50 mg"],
     },
