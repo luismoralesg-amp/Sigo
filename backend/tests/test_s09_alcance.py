@@ -246,17 +246,48 @@ def test_buscar_fuera_de_centro_oculta_alertas_sin_403(cliente):
     )
 
 
-def test_buscar_emergencia_muestra_alertas_de_otro_centro(cliente):
-    ana = token_rol("enfermera")
-    _paciente("p_lejos", "TMP-20050312-LJ02", "Inés Aj", "c_02")
-    _alertas("p_lejos", ["yodo"], ["asma"])
-    _consulta("p_lejos", "c_02", "Elena Choc")
-    r = cliente.get(
-        "/api/v1/pacientes/buscar",
-        headers=auth(ana),
-        params={"dpi": "TMP-20050312-LJ02", "emergencia": "true"},
-    )
-    assert r.status_code == 200, r.text
-    paciente = _forma(r.json(), "p_lejos")
-    assert paciente["alergias"] == ["yodo"]
-    assert paciente["condiciones_cronicas"] == ["asma"]
+def test_buscar_emergencia_sin_acceso_vigente_oculta_alertas(cliente):
+    elena = _enfermera_de("c_02", "Elena Choc", "u_03")
+    try:
+        _alertas("p_12", ["penicilina"], ["hipertension"])
+        r = cliente.get(
+            "/api/v1/pacientes/buscar",
+            headers=auth(elena),
+            params={"dpi": DPI_ROSA, "emergencia": "true"},
+        )
+        assert r.status_code == 200, r.text
+        paciente = _forma(r.json(), "p_12")
+        assert paciente["alergias"] == []
+        assert paciente["condiciones_cronicas"] == []
+        assert not any(a["tipo"] == "emergencia" and a["quien"] == "Elena Choc" for a in almacen.accesos)
+    finally:
+        PERSONAL.pop("u_03", None)
+
+
+def test_buscar_emergencia_vigente_muestra_alertas_y_queda_en_rojo(cliente):
+    elena = _enfermera_de("c_02", "Elena Choc", "u_03")
+    try:
+        _alertas("p_12", ["penicilina"], ["hipertension"])
+        motivo = "Llega inconsciente a emergencias"
+        alta = cliente.post(
+            "/api/v1/emergencia",
+            headers=auth(token_rol("medico")),
+            json={"dpi": DPI_ROSA, "motivo": motivo},
+        )
+        assert alta.status_code == 200, alta.text
+        r = cliente.get(
+            "/api/v1/pacientes/buscar",
+            headers=auth(elena),
+            params={"dpi": DPI_ROSA, "emergencia": "true"},
+        )
+        assert r.status_code == 200, r.text
+        paciente = _forma(r.json(), "p_12")
+        assert paciente["alergias"] == ["penicilina"]
+        assert paciente["condiciones_cronicas"] == ["hipertension"]
+        rosa = cliente.post("/api/v1/auth/paciente", json={"dpi": DPI_ROSA, "pin": PIN_ROSA}).json()["token"]
+        accesos = cliente.get("/api/v1/pacientes/p_12/accesos", headers=auth(rosa)).json()["accesos"]
+        lectura = next(a for a in accesos if a["quien"] == "Elena Choc")
+        assert lectura["tipo"] == "emergencia"
+        assert lectura["motivo"] == motivo
+    finally:
+        PERSONAL.pop("u_03", None)

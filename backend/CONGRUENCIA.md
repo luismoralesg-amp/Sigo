@@ -33,7 +33,7 @@ Rosa y Mateo quedan en el puesto de Ana, así que el demo no cambia. Cada `GET /
 
 La exportación no se le abrió. Phil (endpoint 12) la reserva a la paciente. Un `GET /exportar` de la enfermera responde 403 `rol_no_permitido` y también queda en la bitácora interna.
 
-`GET /pacientes/buscar` sigue nacional y responde 200 con el paciente si el DPI existe (lista vacía solo si no existe; ni 403 ni 409). La forma es la de Phil (`pacientes: [Paciente]`). Si el paciente es de su centro según S-09, `alergias` y `condiciones_cronicas` vienen completas. Si no lo es, esas listas van en `[]`. Con `?emergencia=true` se devuelven siempre, aunque el paciente sea de otro centro. El expediente, las versiones, las fichas, las correcciones y los códigos siguen la regla de centro de arriba.
+`GET /pacientes/buscar` sigue nacional y responde 200 con el paciente si el DPI existe (lista vacía solo si no existe; ni 403 ni 409). La forma es la de Phil (`pacientes: [Paciente]`). Si el paciente es de su centro según S-09, `alergias` y `condiciones_cronicas` vienen completas. Si no lo es, esas listas van en `[]`. `?emergencia=true` no abre las alertas por sí solo: hace falta un acceso de emergencia vigente de `POST /emergencia` para ese paciente. Esa lectura queda en la bitácora con `tipo: emergencia` (la paciente la ve en rojo). El expediente, las versiones, las fichas, las correcciones y los códigos siguen la regla de centro de arriba.
 
 ## P-05 (fichas anteriores al DPI) — no implementado
 

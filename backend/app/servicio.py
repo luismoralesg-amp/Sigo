@@ -221,14 +221,48 @@ def autenticar_paciente(dpi: str, pin: str) -> dict:
     return {"token": token, "vence_en": tiempo.iso(vence), "paciente_id": paciente["id"]}
 
 
+def _emergencia_vigente_de(paciente_id: str) -> dict | None:
+    """Acceso abierto con POST /emergencia que todavía no vence. El query no basta."""
+    momento = tiempo.ahora()
+    vigentes = [
+        a
+        for a in almacen.accesos
+        if a["paciente_id"] == paciente_id and a["tipo"] == "emergencia" and a["hasta"] > momento
+    ]
+    if not vigentes:
+        return None
+    return max(vigentes, key=lambda a: a["hasta"])
+
+
+def _registrar_lectura_emergencia(usuario: dict, paciente_id: str, motivo: str | None) -> None:
+    momento = tiempo.ahora()
+    almacen.registrar_acceso(
+        paciente_id=paciente_id,
+        actor=_actor(usuario),
+        tipo="emergencia",
+        motivo=motivo,
+        desde=momento,
+        hasta=momento,
+    )
+    almacen.anotar_bitacora(
+        {
+            "tipo": "lectura_emergencia",
+            "actor_id": usuario["id"],
+            "paciente_id": paciente_id,
+            "rol": "enfermera",
+        }
+    )
+
+
 def _paciente_de_busqueda(usuario: dict, paciente: dict, emergencia: bool) -> dict:
     """Misma forma de Paciente.
 
-    Con S-09 (su centro, una consulta ahí, o editada_por) o en emergencia,
-    las alertas van completas. Si el registro existe y no es de su centro,
-    alergias y condiciones_cronicas van vacías.
+    S-09 devuelve las alertas completas. ?emergencia=true solo las devuelve si
+    hay un acceso de emergencia vigente para ese paciente. Si no, van vacías.
     """
-    if emergencia or enfermera_alcanza(usuario, paciente["id"]):
+    if enfermera_alcanza(usuario, paciente["id"]):
+        return paciente
+    if emergencia and _emergencia_vigente_de(paciente["id"]):
         return paciente
     visible = dict(paciente)
     visible["alergias"] = []
@@ -252,6 +286,9 @@ def buscar(usuario: dict, dpi: str, emergencia: bool = False) -> dict:
     # Phil: 200 con el paciente si el DPI existe, o lista vacía si no. No es 403 ni 409.
     if not paciente:
         return {"pacientes": []}
+    vigente = _emergencia_vigente_de(paciente["id"]) if emergencia else None
+    if vigente:
+        _registrar_lectura_emergencia(usuario, paciente["id"], vigente.get("motivo"))
     return {"pacientes": [_paciente_de_busqueda(usuario, paciente, emergencia)]}
 
 
