@@ -60,7 +60,8 @@ Cuando se implemente, sin ligar solo:
 - El login de la paciente sigue respondiendo `dpi_invalido` por dentro y lo convierte en `pin_incorrecto`. No se publica `identificador_invalido` en ese camino: distinguiría un DPI mal formado de un PIN mal puesto (S-03).
 - Una foto de más de 5 MB sigue siendo `413 imagen_muy_grande`. `archivo_muy_grande` se usa para el archivo de importar de más de 20 MB. El frontend, ante un 413 con un código que no conoce, lo lee como `archivo_muy_grande`.
 - `SIGO_DPI_VERIFICADOR_ESTRICTO=true` todavía bloquea un dígito verificador que no cuadra. Apagado (el default) es advertencia `dpi_dudoso`, que es lo que pide la v3. El flag no se quitó.
-- La semilla geográfica sigue en Chuicacá / Totonicapán y el médico de prueba es el Dr. Mario Xicará. La v3 narra Chichicastenango y al Dr. Mateo Us. Cambiar los nombres reescribiría la semilla y la prueba de S-09.
+- La semilla geográfica sigue en Chuicacá / Totonicapán. El médico de prueba es el Dr. Mateo Us (`mateo.us@sigo.demo`). `mario.xicara@sigo.demo` queda como alias del mismo médico. La v3 narra Chichicastenango; el municipio de la semilla no se cambió.
+- `formato=json` no está en el exportador de Arturo ni en el mock (`pdf`, `docx`, `xlsx`, `txt`, `md`, `html`). No se armó un exportador nuevo.
 - `POST /pacientes/{id}/fichas` sigue en `200` cuando la visión mock devuelve la ficha ya en `lista`. La v3 también acepta `202` si queda en `procesando`. El frontend acepta las dos.
 - Un `TMP-` no entra en `advertencias`. La v3 lo dice así: el identificador va en `paciente.dpi`.
 - Exportar sigue siendo solo de la paciente. La enfermera y el médico reciben `403`.

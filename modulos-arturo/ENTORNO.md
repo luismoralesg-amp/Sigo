@@ -20,3 +20,27 @@ Medir latencia (C-07): `from sigo_modulos import cag; cag.latencias()` devuelve,
 
 Importar Access: necesita `mdbtools` (`apt install mdbtools`) o, en Windows, `pyodbc` con el controlador de Access.
 Exportar DOCX: necesita `pandoc`. Exportar PDF: `weasyprint`.
+
+## Sesión del personal en desarrollo
+
+El login del personal en el front es de Supabase (no se cambia aquí). Sin Supabase, y solo con `SIGO_ENV=desarrollo` y `SIGO_DEV_LOGIN=true`, el front puede pedir un token así. En producción, en demo, o si `SIGO_DEV_LOGIN` no está, la ruta responde 404.
+
+Enfermera (Ana Tzul, `ana.tzul@sigo.demo`):
+
+```http
+POST /api/v1/dev/sesion
+Content-Type: application/json
+
+{"rol": "enfermera"}
+```
+
+Médico (Dr. Mateo Us, `mateo.us@sigo.demo`; `mario.xicara@sigo.demo` es alias del mismo):
+
+```http
+POST /api/v1/dev/sesion
+Content-Type: application/json
+
+{"rol": "medico"}
+```
+
+Responde `200` con `{ "token", "vence_en", "usuario" }`. El `usuario` del médico se llama `Dr. Mateo Us`. A partir de ahí el front manda `Authorization: Bearer <token>`, igual que con el token de Supabase. El host es `NEXT_PUBLIC_API_URL` sin `/api/v1` (por ejemplo `http://localhost:8000`).

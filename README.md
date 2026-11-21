@@ -34,7 +34,7 @@ cd backend && SIGO_CORS_ORIGINS='http://localhost:3000,http://127.0.0.1:3000,htt
 
 La URL que imprime cloudflared es el host del API, **sin** `/api/v1`. El cliente del frontend (`frontend/lib/api/cliente.ts`) arma `BASE = ${NEXT_PUBLIC_API_URL}/api/v1`. `NEXT_PUBLIC_API_URL` va solo con el host, por ejemplo `http://localhost:8000` o `https://<host>.trycloudflare.com`. Si la variable ya trae `/api/v1`, la ruta se duplica. Lo mismo vale para `SIGO_PUBLIC_API_URL` en el backend (firma las URLs de los archivos).
 
-Datos de prueba inventados: Rosa Batz Tzoc, DPI `2547896330801`, PIN de 6 dígitos `482193`. El de 4 dígitos ya no entra. Después de 5 intentos fallidos el DPI queda bloqueado 15 minutos.
+Datos de prueba inventados: Rosa Batz Tzoc, DPI `2547896330801`, PIN de 6 dígitos `482193`. Mateo Batz, `TMP-20261121-K7Q4`, PIN `258025`. El médico de prueba es el Dr. Mateo Us (`mateo.us@sigo.demo`). Un PIN de 4 dígitos ya no entra. Después de 5 intentos fallidos el DPI queda bloqueado 15 minutos. Las fichas de la semilla están en `/api/v1/archivos/semilla/*.svg`.
 
 `POST /api/v1/dev/sesion` solo responde si `SIGO_ENV=desarrollo` y `SIGO_DEV_LOGIN=true`. En producción, en demo, o si no se configura `SIGO_DEV_LOGIN`, responde 404.
 

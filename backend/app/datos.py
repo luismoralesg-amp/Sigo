@@ -36,12 +36,14 @@ CENTROS: dict[str, dict[str, Any]] = {
 # Personal de prueba. En producción entran con Supabase Auth; se enlazan por correo.
 PERSONAL: dict[str, dict[str, Any]] = {
     "u_01": {"id": "u_01", "nombre": "Ana Tzul", "rol": "enfermera", "centro_id": "c_01", "correo": "ana.tzul@sigo.demo"},
-    "u_02": {"id": "u_02", "nombre": "Dr. Mario Xicará", "rol": "medico", "centro_id": "c_02", "correo": "mario.xicara@sigo.demo"},
+    "u_02": {"id": "u_02", "nombre": "Dr. Mateo Us", "rol": "medico", "centro_id": "c_02", "correo": "mateo.us@sigo.demo"},
 }
+# El correo viejo apunta al mismo médico. El canónico, el que usa el front, es mateo.us.
+ALIAS_CORREO = {"mario.xicara@sigo.demo": "mateo.us@sigo.demo"}
 
 PIN_ROSA = "482193"
-# Semilla de 6 dígitos, igual que el PIN de Rosa. El valor anterior (2580) ya no entra.
-PIN_MATEO = "258036"
+# Mateo Batz. Seis dígitos, como el de Rosa.
+PIN_MATEO = "258025"
 # El ejemplo de Phil (2547896310801) no pasa el dígito verificador: módulo 11 da 3.
 # Este CUI es inventado, mismo correlativo y municipio, con el dígito correcto.
 DPI_ROSA = "2547896330801"
@@ -52,6 +54,15 @@ def hash_pin(pin: str, sal: bytes | None = None) -> str:
     sal = sal or secrets.token_bytes(16)
     digest = hashlib.scrypt(pin.encode(), salt=sal, n=2**12, r=8, p=1)
     return sal.hex() + ":" + digest.hex()
+
+
+def personal_por_correo(correo: str | None) -> dict[str, Any] | None:
+    """El canónico es el correo de la semilla. Un alias (mario.xicara) resuelve al mismo médico."""
+    if not correo:
+        return None
+    texto = str(correo).strip().lower()
+    canonico = ALIAS_CORREO.get(texto, texto)
+    return next((p for p in PERSONAL.values() if p["correo"] == canonico), None)
 
 
 def verificar_pin(pin: str, guardado: str) -> bool:

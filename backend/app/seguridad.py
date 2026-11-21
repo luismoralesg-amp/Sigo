@@ -15,7 +15,7 @@ from fastapi import Depends, Header
 
 from . import tiempo
 from .config import config
-from .datos import PERSONAL, almacen
+from .datos import PERSONAL, almacen, personal_por_correo
 from .errores import MENSAJES, ErrorSigo, error
 
 TOKENS_FIJOS = {"dev-paciente", "dev-enfermera", "dev-medico"}
@@ -86,8 +86,7 @@ def _usuario_de_jwt(token: str) -> dict | None:
         exp = claims.get("exp")
         if exp is not None and float(exp) <= tiempo.ahora().timestamp():
             return None
-        correo = claims.get("email")
-        persona = next((p for p in PERSONAL.values() if p["correo"] == correo), None)
+        persona = personal_por_correo(claims.get("email"))
         if not persona:
             return None
         return _materializar_personal(persona)

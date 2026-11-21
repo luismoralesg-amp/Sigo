@@ -178,6 +178,16 @@ async def importaciones(
     return servicio.importar_archivo(usuario, archivo.filename or "", contenido, paciente_id)
 
 
+@router.get("/archivos/semilla/{nombre}")
+def archivo_semilla(nombre: str) -> Response:
+    from .semilla_archivos import leer_semilla
+
+    contenido = leer_semilla(nombre)
+    if contenido is None:
+        raise error(404, "no_existe", "No encontrado.")
+    return Response(content=contenido, media_type="image/svg+xml")
+
+
 @router.get("/archivos/{archivo_id}")
 def archivo(archivo_id: str, exp: str = Query(...), sig: str = Query(...)) -> Response:
     contenido, media = servicio.leer_archivo_firmado(archivo_id, exp, sig)
