@@ -1,3 +1,4 @@
+from app.config import config
 from app.datos import DPI_ROSA, PIN_ROSA
 from app.errores import TABLA
 from app.modulos.interfaces import CODIGOS_ERROR
@@ -59,7 +60,10 @@ def test_codigo_formato_no_se_reescribe():
     assert "validacion" not in CODIGOS_ERROR["formato_no_soportado"]
 
 
-def test_me_y_login_de_rosa(cliente):
+def test_me_y_login_de_rosa(cliente, monkeypatch):
+    monkeypatch.setenv("SIGO_ENV", "desarrollo")
+    monkeypatch.setenv("SIGO_DEV_LOGIN", "true")
+    config.cache_clear()
     r = cliente.post("/api/v1/dev/sesion", json={"rol": "enfermera"})
     assert r.status_code == 200
     assert r.json()["usuario"]["debe_cambiar_pin"] is False
@@ -72,6 +76,27 @@ def test_me_y_login_de_rosa(cliente):
     assert me.json()["rol"] == "paciente"
     assert me.json()["centro"] is None
     assert "debe_cambiar_pin" in me.json()
+
+
+def test_dev_sesion_apagada_sin_flag_y_en_produccion(cliente, monkeypatch):
+    """Apagado si no se configura SIGO_DEV_LOGIN, y en producción aunque el ejemplo diga true."""
+    monkeypatch.delenv("SIGO_DEV_LOGIN", raising=False)
+    monkeypatch.delenv("SIGO_ENV", raising=False)
+    config.cache_clear()
+    assert config().sigo_dev_login is False
+    assert config().dev_login_activo is False
+    assert_error(cliente.post("/api/v1/dev/sesion", json={"rol": "enfermera"}), 404, "no_existe")
+
+    monkeypatch.setenv("SIGO_ENV", "produccion")
+    monkeypatch.setenv("SIGO_DEV_LOGIN", "true")
+    config.cache_clear()
+    assert config().sigo_dev_login is True
+    assert config().dev_login_activo is False
+    assert_error(cliente.post("/api/v1/dev/sesion", json={"rol": "medico"}), 404, "no_existe")
+
+    monkeypatch.setenv("SIGO_ENV", "demo")
+    config.cache_clear()
+    assert_error(cliente.post("/api/v1/dev/sesion", json={"rol": "enfermera"}), 404, "no_existe")
 
 
 def test_medico_sin_acceso(cliente):
