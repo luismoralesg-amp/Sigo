@@ -1,0 +1,61 @@
+{
+  "paciente": {
+    "nombre": {
+      "valor": "Ana Beatriz Cumes Palala",
+      "confianza": "alta"
+    },
+    "dpi": {
+      "valor": "9112233445566",
+      "confianza": "alta"
+    },
+    "fecha_nacimiento": {
+      "valor": "1986-08-22",
+      "confianza": "alta"
+    },
+    "sexo": {
+      "valor": "F",
+      "confianza": "alta"
+    },
+    "comunidad": {
+      "valor": "Aldea El Encinal, San Raymundo",
+      "confianza": "alta"
+    },
+    "alergias": {
+      "valor": [
+        "Sulfas"
+      ],
+      "confianza": "alta"
+    },
+    "condiciones_cronicas": {
+      "valor": [
+        "Asma"
+      ],
+      "confianza": "alta"
+    }
+  },
+  "consultas": [
+    {
+      "fecha": {
+        "valor": "2025-05-03",
+        "confianza": "alta"
+      },
+      "motivo": {
+        "valor": "Tos y silbido de pecho",
+        "confianza": "alta"
+      },
+      "diagnostico": {
+        "valor": "Exacerbacion asmatica",
+        "confianza": "alta"
+      },
+      "tratamiento": {
+        "valor": "Salbutamol inhalado",
+        "confianza": "alta"
+      },
+      "vacunas": {
+        "valor": [],
+        "confianza": "alta"
+      },
+      "pagina": 0
+    }
+  ]
+}

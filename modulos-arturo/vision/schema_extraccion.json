@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sigo-vision-extraccion-v2",
+  "title": "Extraccion (contrato Phil)",
+  "type": "object",
+  "required": [
+    "paciente",
+    "consultas"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "paciente": {
+      "type": "object",
+      "required": [
+        "nombre",
+        "dpi",
+        "fecha_nacimiento",
+        "sexo",
+        "comunidad",
+        "alergias",
+        "condiciones_cronicas"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "nombre": {
+          "$ref": "#/$defs/campo_string"
+        },
+        "dpi": {
+          "$ref": "#/$defs/campo_string"
+        },
+        "fecha_nacimiento": {
+          "$ref": "#/$defs/campo_string"
+        },
+        "sexo": {
+          "$ref": "#/$defs/campo_sexo"
+        },
+        "comunidad": {
+          "$ref": "#/$defs/campo_string"
+        },
+        "alergias": {
+          "$ref": "#/$defs/campo_string_array"
+        },
+        "condiciones_cronicas": {
+          "$ref": "#/$defs/campo_string_array"
+        }
+      }
+    },
+    "consultas": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/consulta"
+      }
+    },
+    "error": {
+      "type": "string",
+      "description": "Opcional. Si la imagen es ilegible o no es una ficha. extraer_ficha lanza ErrorModulo(codigo=ilegible) y adjunta esta Extraccion en exc.extraccion."
+    }
+  },
+  "$defs": {
+    "confianza": {
+      "type": "string",
+      "enum": [
+        "alta",
+        "baja"
+      ]
+    },
+    "campo_string": {
+      "type": "object",
+      "required": [
+        "valor",
+        "confianza"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "valor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "confianza": {
+          "$ref": "#/$defs/confianza"
+        }
+      }
+    },
+    "campo_sexo": {
+      "type": "object",
+      "required": [
+        "valor",
+        "confianza"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "valor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "F",
+            "M",
+            null
+          ]
+        },
+        "confianza": {
+          "$ref": "#/$defs/confianza"
+        }
+      }
+    },
+    "campo_string_array": {
+      "type": "object",
+      "required": [
+        "valor",
+        "confianza"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "valor": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "confianza": {
+          "$ref": "#/$defs/confianza"
+        }
+      }
+    },
+    "consulta": {
+      "type": "object",
+      "required": [
+        "fecha",
+        "motivo",
+        "diagnostico",
+        "tratamiento",
+        "vacunas",
+        "pagina"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "fecha": {
+          "$ref": "#/$defs/campo_string"
+        },
+        "motivo": {
+          "$ref": "#/$defs/campo_string"
+        },
+        "diagnostico": {
+          "$ref": "#/$defs/campo_string"
+        },
+        "tratamiento": {
+          "$ref": "#/$defs/campo_string"
+        },
+        "vacunas": {
+          "$ref": "#/$defs/campo_string_array"
+        },
+        "pagina": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

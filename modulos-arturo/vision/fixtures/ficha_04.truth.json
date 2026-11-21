@@ -1,0 +1,59 @@
+{
+  "paciente": {
+    "nombre": {
+      "valor": "Diego Andres Pu Tun",
+      "confianza": "alta"
+    },
+    "dpi": {
+      "valor": null,
+      "confianza": "baja"
+    },
+    "fecha_nacimiento": {
+      "valor": "2020-09-15",
+      "confianza": "alta"
+    },
+    "sexo": {
+      "valor": "M",
+      "confianza": "alta"
+    },
+    "comunidad": {
+      "valor": "Caserio El Tablon",
+      "confianza": "alta"
+    },
+    "alergias": {
+      "valor": null,
+      "confianza": "baja"
+    },
+    "condiciones_cronicas": {
+      "valor": null,
+      "confianza": "baja"
+    }
+  },
+  "consultas": [
+    {
+      "fecha": {
+        "valor": "2026-02-10",
+        "confianza": "alta"
+      },
+      "motivo": {
+        "valor": "Fiebre y tos",
+        "confianza": "alta"
+      },
+      "diagnostico": {
+        "valor": null,
+        "confianza": "baja"
+      },
+      "tratamiento": {
+        "valor": "Suero oral",
+        "confianza": "alta"
+      },
+      "vacunas": {
+        "valor": [
+          "SRP"
+        ],
+        "confianza": "alta"
+      },
+      "pagina": 0
+    }
+  ]
+}
