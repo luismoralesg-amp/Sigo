@@ -1,0 +1,86 @@
+{
+  "paciente": {
+    "nombre": {
+      "valor": "Carmen Yolanda Ixcotajay",
+      "confianza": "alta"
+    },
+    "dpi": {
+      "valor": "9556677889900",
+      "confianza": "alta"
+    },
+    "fecha_nacimiento": {
+      "valor": "1979-04-07",
+      "confianza": "alta"
+    },
+    "sexo": {
+      "valor": "F",
+      "confianza": "alta"
+    },
+    "comunidad": {
+      "valor": "Paraje Chuwi, Solola",
+      "confianza": "alta"
+    },
+    "alergias": {
+      "valor": [],
+      "confianza": "alta"
+    },
+    "condiciones_cronicas": {
+      "valor": [
+        "Diabetes tipo 2"
+      ],
+      "confianza": "alta"
+    }
+  },
+  "consultas": [
+    {
+      "fecha": {
+        "valor": "2019-06-18",
+        "confianza": "alta"
+      },
+      "motivo": {
+        "valor": "Control general",
+        "confianza": "alta"
+      },
+      "diagnostico": {
+        "valor": null,
+        "confianza": "baja"
+      },
+      "tratamiento": {
+        "valor": "Dieta y control",
+        "confianza": "alta"
+      },
+      "vacunas": {
+        "valor": [
+          "Influenza"
+        ],
+        "confianza": "alta"
+      },
+      "pagina": 0
+    },
+    {
+      "fecha": {
+        "valor": "2023-11-09",
+        "confianza": "alta"
+      },
+      "motivo": {
+        "valor": "Revision de azucar",
+        "confianza": "alta"
+      },
+      "diagnostico": {
+        "valor": "Diabetes tipo 2",
+        "confianza": "alta"
+      },
+      "tratamiento": {
+        "valor": "Metformina 850 mg",
+        "confianza": "alta"
+      },
+      "vacunas": {
+        "valor": [
+          "Td"
+        ],
+        "confianza": "alta"
+      },
+      "pagina": 0
+    }
+  ]
+}

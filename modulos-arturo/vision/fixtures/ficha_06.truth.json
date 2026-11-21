@@ -1,0 +1,34 @@
+{
+  "paciente": {
+    "nombre": {
+      "valor": null,
+      "confianza": "baja"
+    },
+    "dpi": {
+      "valor": null,
+      "confianza": "baja"
+    },
+    "fecha_nacimiento": {
+      "valor": null,
+      "confianza": "baja"
+    },
+    "sexo": {
+      "valor": null,
+      "confianza": "baja"
+    },
+    "comunidad": {
+      "valor": null,
+      "confianza": "baja"
+    },
+    "alergias": {
+      "valor": null,
+      "confianza": "baja"
+    },
+    "condiciones_cronicas": {
+      "valor": null,
+      "confianza": "baja"
+    }
+  },
+  "consultas": [],
+  "error": "no es una ficha clinica"
+}

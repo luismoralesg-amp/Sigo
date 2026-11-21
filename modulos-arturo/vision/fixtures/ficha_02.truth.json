@@ -1,0 +1,57 @@
+{
+  "paciente": {
+    "nombre": {
+      "valor": "Jose Tomas Xiloj Perez",
+      "confianza": "alta"
+    },
+    "dpi": {
+      "valor": "9223344556677",
+      "confianza": "alta"
+    },
+    "fecha_nacimiento": {
+      "valor": "1965-11-11",
+      "confianza": "alta"
+    },
+    "sexo": {
+      "valor": "M",
+      "confianza": "alta"
+    },
+    "comunidad": {
+      "valor": "Canton Paquix, Huehuetenango",
+      "confianza": "alta"
+    },
+    "alergias": {
+      "valor": null,
+      "confianza": "baja"
+    },
+    "condiciones_cronicas": {
+      "valor": null,
+      "confianza": "baja"
+    }
+  },
+  "consultas": [
+    {
+      "fecha": {
+        "valor": "2024-08-14",
+        "confianza": "alta"
+      },
+      "motivo": {
+        "valor": "Dolor de rodilla",
+        "confianza": "alta"
+      },
+      "diagnostico": {
+        "valor": "Artrosis de rodilla",
+        "confianza": "alta"
+      },
+      "tratamiento": {
+        "valor": "Paracetamol 500 mg",
+        "confianza": "alta"
+      },
+      "vacunas": {
+        "valor": null,
+        "confianza": "baja"
+      },
+      "pagina": 0
+    }
+  ]
+}

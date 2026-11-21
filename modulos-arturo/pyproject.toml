@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sigo-modulos"
+version = "0.1.0"
+description = "Módulos de Arturo para SIGO. Visión: sigo_modulos.vision.extraer_ficha."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+fixtures = ["Pillow>=10"]
+
+[tool.setuptools.packages.find]
+include = ["sigo_modulos*"]
+
+[tool.pytest.ini_options]
+testpaths = ["vision/tests"]
+pythonpath = ["."]
