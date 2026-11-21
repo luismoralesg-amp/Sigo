@@ -98,10 +98,12 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, .font-serif {
-  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
-  font-optical-sizing: auto;
-  letter-spacing: -0.01em;
+@layer base {
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+  }
 }
 
 /* números tabulares para fechas y DPI */
