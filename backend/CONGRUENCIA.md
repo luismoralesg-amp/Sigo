@@ -1,6 +1,16 @@
-# Congruencia del backend con el contrato v1
+# Congruencia del backend con el contrato
 
-La ley es el contrato de Phil (`docs/contrato-phil-flujo-y-api.txt`): 18 endpoints bajo `/api/v1`. `POST /importaciones` es el extra. `POST /importar` del borrador v0 no existe.
+La base sigue siendo el contrato de Phil (`docs/contrato-phil-flujo-y-api.txt`): 18 endpoints bajo `/api/v1`. Encima está la v3 (`docs/contrato-v3.md`), sumada sin quitar rutas ni campos:
+
+- `GET /fichas?estado=&importacion_id=` lista fichas del centro de la enfermera (S-09), de la más nueva a la más vieja. Sin `estado`, quedan las pendientes (`lista`).
+- `Ficha` suma `originales`, `origen` (`foto` | `importacion`) e `importacion_id`. `imagenes` se conserva (en una foto, las mismas URLs que `originales`).
+- `POST /pacientes` responde `{ paciente, pin_inicial, advertencias }`. `dpi_dudoso` si el dígito verificador o el municipio no cuadran (se crea igual). `posible_duplicado` si el nombre ya está y la fecha de nacimiento no contradice. Un `TMP-` no es advertencia. Un DPI repetido sigue siendo `409 dpi_ya_existe`.
+- El PIN tiene 6 dígitos. La semilla de Rosa es `482193`. `PUT /me/pin` rechaza otra longitud. 5 intentos fallidos bloquean 15 minutos (S-03).
+- `POST /importaciones` responde `201` con la forma congelada. Un archivo de más de 20 MB es `413 archivo_muy_grande`.
+
+`POST /importar` del borrador v0 no existe.
+
+`NEXT_PUBLIC_API_URL` (y `SIGO_PUBLIC_API_URL`) es el host, sin `/api/v1`. El cliente arma `${NEXT_PUBLIC_API_URL}/api/v1`. Ejemplo: `https://<host>.trycloudflare.com`.
 
 `contrato/openapi.yaml` sigue en v0 (`error` y `mensaje` sueltos, sin enum de códigos). La v1 publica los códigos en el OpenAPI de FastAPI (`/openapi.json`, esquema `ErrorCuerpo`).
 
@@ -8,13 +18,13 @@ La ley es el contrato de Phil (`docs/contrato-phil-flujo-y-api.txt`): 18 endpoin
 
 | HTTP | codigo |
 | --- | --- |
-| 400 | validacion, dpi_invalido, sin_consentimiento, formato_no_soportado |
+| 400 | validacion, dpi_invalido, identificador_invalido, sin_consentimiento, motivo_requerido, formato_no_soportado |
 | 401 | sin_sesion, pin_incorrecto |
 | 403 | rol_no_permitido, acceso_vencido, solo_emergencia |
 | 404 | no_existe |
 | 409 | dpi_ya_existe, ficha_ya_confirmada, codigo_ya_usado |
 | 410 | codigo_vencido |
-| 413 | imagen_muy_grande |
+| 413 | imagen_muy_grande, archivo_muy_grande |
 | 422 | ilegible |
 | 429 | demasiados_intentos |
 | 503 | ia_no_disponible |
@@ -44,6 +54,17 @@ Cuando se implemente, sin ligar solo:
 - Normalizar nombre (minúsculas, sin tildes, espacios colapsados) y comparar `fecha_nacimiento` exacta (`YYYY-MM-DD`).
 - Si hay coincidencias, proponerlas a la enfermera. No llamar `crear_paciente` ni cambiar `paciente_id` por ese cruce.
 - El único guardado sigue siendo `POST /fichas/{id}/confirmar` con `consentimiento: true`. Sin ese Confirmar, la ficha no entra al expediente.
+
+## Diferencias de la v3 que no se cambiaron
+
+- El login de la paciente sigue respondiendo `dpi_invalido` por dentro y lo convierte en `pin_incorrecto`. No se publica `identificador_invalido` en ese camino: distinguiría un DPI mal formado de un PIN mal puesto (S-03).
+- Una foto de más de 5 MB sigue siendo `413 imagen_muy_grande`. `archivo_muy_grande` se usa para el archivo de importar de más de 20 MB. El frontend, ante un 413 con un código que no conoce, lo lee como `archivo_muy_grande`.
+- `SIGO_DPI_VERIFICADOR_ESTRICTO=true` todavía bloquea un dígito verificador que no cuadra. Apagado (el default) es advertencia `dpi_dudoso`, que es lo que pide la v3. El flag no se quitó.
+- La semilla geográfica sigue en Chuicacá / Totonicapán. El médico de prueba es el Dr. Mateo Us (`mateo.us@sigo.demo`). `mario.xicara@sigo.demo` queda como alias del mismo médico. La v3 narra Chichicastenango; el municipio de la semilla no se cambió.
+- `formato=json` no está en el exportador de Arturo ni en el mock (`pdf`, `docx`, `xlsx`, `txt`, `md`, `html`). No se armó un exportador nuevo.
+- `POST /pacientes/{id}/fichas` sigue en `200` cuando la visión mock devuelve la ficha ya en `lista`. La v3 también acepta `202` si queda en `procesando`. El frontend acepta las dos.
+- Un `TMP-` no entra en `advertencias`. La v3 lo dice así: el identificador va en `paciente.dpi`.
+- Exportar sigue siendo solo de la paciente. La enfermera y el médico reciben `403`.
 
 ## Inconsistencias que no se tocaron
 

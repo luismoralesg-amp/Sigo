@@ -7,6 +7,7 @@ import hashlib
 import logging
 import re
 import secrets
+import unicodedata
 from datetime import datetime, timedelta
 
 from . import tiempo
@@ -27,8 +28,9 @@ from .seguridad import (
 
 log = logging.getLogger("sigo.sms")
 _ALFABETO_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-_FICHA_PUBLICA = ("id", "paciente_id", "client_id", "estado", "imagenes", "extraccion", "error", "creada_en")
 _CAMPOS_PACIENTE = ("nombre", "fecha_nacimiento", "sexo", "comunidad", "alergias", "condiciones_cronicas")
+_ESTADOS_FICHA = {"procesando", "lista", "confirmada", "error"}
+_LIMITE_IMPORTACION = 20 * 1024 * 1024
 _CAMPOS_CONSULTA = ("fecha", "motivo", "diagnostico", "tratamiento", "vacunas")
 
 
@@ -72,8 +74,32 @@ def leer_archivo_firmado(archivo_id: str, exp: str, sig: str) -> tuple[bytes, st
     return guardado
 
 
+def _urls_originales(ficha: dict) -> list[str]:
+    """Fotos firmadas, o el archivo de la importación si no hubo foto."""
+    fotos = list(ficha.get("imagenes") or [])
+    if fotos:
+        return fotos
+    archivo = ficha.get("archivo_url")
+    if archivo:
+        return [archivo]
+    return list(ficha.get("originales") or [])
+
+
 def ficha_publica(ficha: dict) -> dict:
-    return {clave: ficha[clave] for clave in _FICHA_PUBLICA}
+    """imagenes queda como está. originales, origen e importacion_id se suman."""
+    return {
+        "id": ficha["id"],
+        "paciente_id": ficha["paciente_id"],
+        "origen": ficha.get("origen") or ("importacion" if ficha.get("importacion_id") else "foto"),
+        "importacion_id": ficha.get("importacion_id"),
+        "client_id": ficha.get("client_id"),
+        "estado": ficha["estado"],
+        "originales": _urls_originales(ficha),
+        "imagenes": list(ficha.get("imagenes") or []),
+        "extraccion": ficha.get("extraccion"),
+        "error": ficha.get("error"),
+        "creada_en": ficha["creada_en"],
+    }
 
 
 def _actor(usuario: dict) -> dict:
@@ -152,17 +178,42 @@ def _paciente_o_404(pid: str) -> dict:
     return paciente
 
 
-def resolver_dpi_nuevo(dpi: str | None) -> str:
+def resolver_dpi_nuevo(dpi: str | None) -> tuple[str, list[str]]:
+    """Devuelve el identificador y las advertencias. Un TMP- no advierte."""
     if dpi is None or str(dpi).strip() == "":
-        return generar_identificador_temporal(tiempo.ahora().date(), almacen.dpis())
+        return generar_identificador_temporal(tiempo.ahora().date(), almacen.dpis()), []
     texto = str(dpi).strip()
     if es_identificador_temporal(texto):
-        return texto.upper()
+        return texto.upper(), []
     resultado = validar_cui(texto, verificador_estricto=config().sigo_dpi_verificador_estricto)
     if not resultado.valido or not resultado.cui:
         mensaje = resultado.errores[0] if resultado.errores else MENSAJES["dpi_invalido"]
         raise error(400, "dpi_invalido", mensaje)
-    return resultado.cui
+    avisos = ["dpi_dudoso"] if resultado.advertencias else []
+    return resultado.cui, avisos
+
+
+def _normalizar_nombre(nombre: str) -> str:
+    plano = unicodedata.normalize("NFKD", nombre or "").encode("ascii", "ignore").decode()
+    return " ".join(plano.lower().split())
+
+
+def _posible_duplicado(nombre: str, fecha: str | None) -> bool:
+    """Mismo nombre, y la fecha de nacimiento no contradice a la que ya está."""
+    clave = _normalizar_nombre(nombre)
+    if len(clave) < 3:
+        return False
+    for versiones in almacen.pacientes.values():
+        if not versiones:
+            continue
+        actual = versiones[-1]
+        if _normalizar_nombre(actual.get("nombre") or "") != clave:
+            continue
+        otra = actual.get("fecha_nacimiento")
+        if fecha and otra and fecha != otra:
+            continue
+        return True
+    return False
 
 
 def buscar_paciente_por_dpi(dpi: str) -> dict:
@@ -204,7 +255,7 @@ def _nuevo_codigo() -> str:
 def autenticar_paciente(dpi: str, pin: str) -> dict:
     clave = clave_pin(dpi)
     exigir_libre("pin", clave)
-    if not isinstance(pin, str) or not re.fullmatch(r"\d{4,6}", pin):
+    if not isinstance(pin, str) or not re.fullmatch(r"\d{6}", pin):
         raise fallo_pin(clave)
     try:
         paciente = buscar_paciente_por_dpi(dpi)
@@ -298,15 +349,18 @@ def crear_paciente(usuario: dict, datos: dict) -> dict:
     nombre = (datos.get("nombre") or "").strip()
     if not nombre:
         raise error(400, "validacion", "Falta el nombre.")
-    dpi = resolver_dpi_nuevo(datos.get("dpi"))
+    dpi, advertencias = resolver_dpi_nuevo(datos.get("dpi"))
     if almacen.paciente_por_dpi(dpi):
         raise error(409, "dpi_ya_existe", MENSAJES["dpi_ya_existe"])
+    fecha = _fecha(datos.get("fecha_nacimiento"))
+    if _posible_duplicado(nombre, fecha):
+        advertencias.append("posible_duplicado")
     pin = _generar_pin()
     paciente = almacen.crear_paciente(
         {
             "dpi": dpi,
             "nombre": nombre,
-            "fecha_nacimiento": _fecha(datos.get("fecha_nacimiento")),
+            "fecha_nacimiento": fecha,
             "sexo": datos.get("sexo"),
             "comunidad": datos.get("comunidad"),
             "alergias": [],
@@ -318,7 +372,7 @@ def crear_paciente(usuario: dict, datos: dict) -> dict:
         centro_id=usuario.get("centro_id"),
     )
     almacen.anotar_bitacora({"tipo": "alta_paciente", "actor_id": usuario["id"], "paciente_id": paciente["id"]})
-    return {"paciente": paciente, "pin_inicial": pin}
+    return {"paciente": paciente, "pin_inicial": pin, "advertencias": advertencias}
 
 
 def _guardar_ficha(ficha: dict) -> dict:
@@ -360,6 +414,8 @@ def subir_ficha(usuario: dict, paciente_id: str, client_id: str, capturada_en: s
         {
             "id": almacen.nuevo_id("f"),
             "paciente_id": paciente_id,
+            "origen": "foto",
+            "importacion_id": None,
             "client_id": client_id,
             "estado": "lista",
             "imagenes": urls,
@@ -372,6 +428,29 @@ def subir_ficha(usuario: dict, paciente_id: str, client_id: str, capturada_en: s
         }
     )
     return ficha_publica(ficha)
+
+
+def listar_fichas(usuario: dict, estado: str | None, importacion_id: str | None) -> dict:
+    """Fichas del centro de la enfermera (S-09), de la más nueva a la más vieja.
+
+    Sin estado, quedan las pendientes (lista). Sin importacion_id, todas esas
+    del centro. Otro rol responde 403.
+    """
+    if usuario["rol"] != "enfermera":
+        raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
+    if estado is not None and estado not in _ESTADOS_FICHA:
+        raise error(400, "validacion", "El estado de la ficha no es válido.")
+    filtro = estado or "lista"
+    imp = (importacion_id or "").strip() or None
+    encontradas = [
+        ficha
+        for ficha in almacen.fichas.values()
+        if ficha.get("estado") == filtro
+        and (imp is None or ficha.get("importacion_id") == imp)
+        and enfermera_alcanza(usuario, ficha["paciente_id"])
+    ]
+    encontradas.sort(key=lambda f: (f.get("creada_en") or "", f.get("id") or ""), reverse=True)
+    return {"fichas": [ficha_publica(f) for f in encontradas]}
 
 
 def obtener_ficha(usuario: dict, ficha_id: str) -> dict:
@@ -479,7 +558,7 @@ def corregir_consulta(usuario: dict, consulta_id: str, cuerpo: dict) -> dict:
     exigir_centro_enfermera(usuario, pid)
     motivo = (cuerpo.get("motivo_cambio") or "").strip()
     if not motivo:
-        raise error(400, "validacion", "Falta el motivo del cambio.")
+        raise error(400, "motivo_requerido", "Falta el motivo del cambio.")
     cambios = {}
     for campo in _CAMPOS_CONSULTA:
         if campo not in cuerpo:
@@ -517,7 +596,7 @@ def corregir_paciente(usuario: dict, paciente_id: str, cuerpo: dict) -> dict:
         raise error(400, "validacion", "El DPI no se corrige desde la app.")
     motivo = (cuerpo.get("motivo_cambio") or "").strip()
     if not motivo:
-        raise error(400, "validacion", "Falta el motivo del cambio.")
+        raise error(400, "motivo_requerido", "Falta el motivo del cambio.")
     cambios = {}
     for campo in _CAMPOS_PACIENTE:
         if campo not in cuerpo:
@@ -737,8 +816,8 @@ def ver_accesos(usuario: dict, paciente_id: str) -> dict:
 def cambiar_pin(usuario: dict, pin_actual: str, pin_nuevo: str) -> None:
     if usuario["rol"] != "paciente" or not usuario.get("paciente_id"):
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
-    if not re.fullmatch(r"\d{4,6}", pin_nuevo or ""):
-        raise error(400, "validacion", "El PIN nuevo tiene de 4 a 6 dígitos.")
+    if not re.fullmatch(r"\d{6}", pin_nuevo or ""):
+        raise error(400, "validacion", "El PIN nuevo tiene 6 dígitos.")
     paciente = _paciente_o_404(usuario["paciente_id"])
     clave = clave_pin(paciente["dpi"])
     exigir_libre("pin", clave)
@@ -755,7 +834,7 @@ def emergencia(usuario: dict, dpi: str, motivo: str) -> dict:
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
     texto = (motivo or "").strip()
     if len(texto) < 10:
-        raise error(400, "validacion", "El motivo de la emergencia debe tener al menos 10 caracteres.")
+        raise error(400, "motivo_requerido", "El motivo de la emergencia debe tener al menos 10 caracteres.")
     paciente = buscar_paciente_por_dpi(dpi)
     desde = tiempo.ahora()
     hasta = desde + timedelta(hours=1)
@@ -849,6 +928,8 @@ def _vincular_fila(extr: dict, paciente_id_form: str | None, centro_id: str | No
 def importar_archivo(usuario: dict, nombre: str, contenido: bytes, paciente_id: str | None) -> dict:
     if usuario["rol"] != "enfermera":
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
+    if len(contenido) > _LIMITE_IMPORTACION:
+        raise error(413, "archivo_muy_grande", MENSAJES["archivo_muy_grande"])
     if paciente_id:
         _paciente_o_404(paciente_id)
         exigir_centro_enfermera(usuario, paciente_id)
@@ -891,11 +972,13 @@ def importar_archivo(usuario: dict, nombre: str, contenido: bytes, paciente_id: 
         ahora_iso = tiempo.iso(tiempo.ahora())
         _guardar_ficha(
             {
-                "id": almacen.nuevo_id("f"),
-                "paciente_id": pid,
-                "client_id": f"{importacion_id}-{fila['fila']}",
-                "estado": "lista",
-                "imagenes": [],
+            "id": almacen.nuevo_id("f"),
+            "paciente_id": pid,
+            "origen": "importacion",
+            "importacion_id": importacion_id,
+            "client_id": None,
+            "estado": "lista",
+            "imagenes": [],
                 "extraccion": extr,
                 "error": None,
                 "creada_en": ahora_iso,

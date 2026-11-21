@@ -429,7 +429,7 @@ Sigo: flujo de usuario y contrato frontend–backend
                    "municipio": "Totonicapán", "departamento": "Totonicapán" } }
 
 
-  2. POST /auth/paciente con { "dpi": "2547896310801", "pin": "4821" } → {
+  2. POST /auth/paciente con { "dpi": "2547896310801", "pin": "482193" } → {
   "token": "…", "vence_en": "2026-11-21T12:42:00-06:00", "paciente_id": "p_12"
   } . Después de 5 intentos fallidos responde 429 por 15 minutos.
 
@@ -442,8 +442,8 @@ Sigo: flujo de usuario y contrato frontend–backend
 
 
 
-  17. PUT /me/pin con { "pin_actual": "4821", "pin_nuevo": "9034" } → 204 . El PIN
-  nuevo tiene de 4 a 6 dígitos. Mientras GET /me diga debe_cambiar_pin: true , el
+  17. PUT /me/pin con { "pin_actual": "482193", "pin_nuevo": "903417" } → 204 . El PIN
+  nuevo tiene 6 dígitos. Mientras GET /me diga debe_cambiar_pin: true , el
   frontend manda a /mi/pin antes que a cualquier otra pantalla.
 
 
@@ -453,7 +453,7 @@ Sigo: flujo de usuario y contrato frontend–backend
 
   4. POST /pacientes con { "dpi", "nombre", "fecha_nacimiento", "sexo",
   "comunidad", "telefono" } → 201 con { "paciente": Paciente, "pin_inicial":
-  "4821" } . El PIN se muestra una sola vez para que la enfermera se lo dé a la paciente. Si el
+  "482193" } . El PIN se muestra una sola vez para que la enfermera se lo dé a la paciente. Si el
   DPI ya existe, responde 409 .
 
   5. POST /pacientes/{id}/fichas , en multipart/form-data :

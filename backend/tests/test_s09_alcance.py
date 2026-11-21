@@ -38,7 +38,7 @@ def _paciente(pid: str, dpi: str, nombre: str, centro_id: str) -> None:
             "condiciones_cronicas": [],
         },
         telefono=None,
-        pin="1111",
+        pin="111111",
         debe_cambiar_pin=True,
         centro_id=centro_id,
     )
