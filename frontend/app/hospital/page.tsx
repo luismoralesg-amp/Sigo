@@ -8,7 +8,7 @@ import { Suspense, useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KeyRound, LoaderCircle, Siren, TimerOff } from "lucide-react";
 import { Shell } from "@/components/shell";
-import { Boton } from "@/components/ui/button";
+import { Boton, BarraAccion } from "@/components/ui/button";
 import { AreaTexto, Entrada, Etiqueta } from "@/components/ui/input";
 import { MensajeError } from "@/components/estado";
 import { EscanerQR } from "@/components/expediente/escaner-qr";
@@ -70,7 +70,7 @@ function Hospital() {
   return (
     <>
       {vencido && (
-        <div className="mb-6 flex items-start gap-3 rounded-[14px] border border-linea bg-superficie p-4" role="status">
+        <div className="mb-6 flex items-start gap-3 rounded-[12px] border border-linea bg-superficie p-4" role="status">
           <TimerOff className="mt-0.5 h-5 w-5 shrink-0 text-kraft-tinta" aria-hidden="true" />
           <p>
             <span className="font-semibold">El acceso a ese expediente venció.</span> Pide un código nuevo a la paciente.
@@ -78,10 +78,11 @@ function Hospital() {
         </div>
       )}
 
-      <h1 className="text-[2rem] leading-tight text-primario sm:text-[2.4rem]">Abrir un expediente</h1>
+      <h1 className="titulo">Abrir un expediente</h1>
       <p className="mt-2 max-w-[60ch] text-tinta-suave">Pide a la paciente el código de Sigo o escanea su QR. Solo verás su historial mientras el acceso esté vigente.</p>
 
       <form
+        id="form-codigo"
         onSubmit={(e) => {
           e.preventDefault();
           void activar(codigo);
@@ -90,7 +91,7 @@ function Hospital() {
         noValidate
       >
         <Etiqueta htmlFor="codigo">Código de la paciente</Etiqueta>
-        <div className="mt-1.5 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-1.5">
           <Entrada
             id="codigo"
             autoComplete="off"
@@ -101,11 +102,8 @@ function Hospital() {
             onChange={(e) => setCodigo(normalizarCodigo(e.target.value))}
             aria-invalid={Boolean(error)}
             aria-describedby={error ? "codigo-error" : undefined}
-            className={cn("num min-h-14 flex-1 font-mono text-[1.4rem] uppercase tracking-[0.18em]", error && "border-alerta")}
+            className={cn("cifra min-h-14 text-[1.5rem] uppercase tracking-[0.18em]", error && "border-alerta")}
           />
-          <Boton type="submit" tamaño="lg" disabled={activando}>
-            {activando ? <LoaderCircle className="animate-spin" /> : <KeyRound />} Abrir
-          </Boton>
         </div>
         {error && <MensajeError id="codigo-error" className="mt-2">{error}</MensajeError>}
       </form>
@@ -114,18 +112,26 @@ function Hospital() {
       </div>
 
       <section className="mt-12 border-t border-linea pt-8" aria-labelledby="titulo-emergencia">
-        <h2 id="titulo-emergencia" className="text-[1.25rem] font-semibold">
+        <h2 id="titulo-emergencia" className="subtitulo">
           ¿La paciente no puede darte el código?
         </h2>
-        <p className="mt-1.5 max-w-[60ch] text-tinta-suave">Si llega inconsciente o no puede hablar, abre un acceso de emergencia. Solo muestra alergias, condiciones crónicas y medicamentos, dura 1 hora y queda en rojo en su bitácora, con el motivo.</p>
+        <p className="mt-1.5 max-w-[60ch] text-tinta-suave">Si llega inconsciente o no puede hablar, abre un acceso de emergencia. Solo muestra alergias y condiciones crónicas, dura 1 hora y queda en rojo en su bitácora, con el motivo.</p>
         {emergencia ? (
           <FormularioEmergencia onCancelar={() => setEmergencia(false)} />
         ) : (
-          <Boton variante="secundario" tamaño="lg" className="mt-4 border-alerta/40 text-alerta hover:border-alerta/60 hover:bg-alerta-fondo" onClick={() => setEmergencia(true)}>
+          <Boton variante="secundario" tamaño="lg" className="mt-4 border-alerta text-alerta hover:bg-alerta-fondo" onClick={() => setEmergencia(true)}>
             <Siren /> Acceso de emergencia
           </Boton>
         )}
       </section>
+
+      {!emergencia && (
+        <BarraAccion>
+          <Boton type="submit" form="form-codigo" tamaño="accion" disabled={activando}>
+            {activando ? <LoaderCircle className="animate-spin" /> : <KeyRound />} Abrir expediente
+          </Boton>
+        </BarraAccion>
+      )}
     </>
   );
 }
@@ -155,7 +161,7 @@ function FormularioEmergencia({ onCancelar }: { onCancelar: () => void }) {
   }
 
   return (
-    <form onSubmit={abrir} className="mt-5 space-y-4 rounded-[18px] border-2 border-alerta/40 bg-superficie p-4 sm:p-6" noValidate aria-label="Acceso de emergencia">
+    <form id="form-emergencia" onSubmit={abrir} className="mt-5 space-y-4 rounded-[12px] border-2 border-alerta bg-superficie p-4 sm:p-6" noValidate aria-label="Acceso de emergencia">
       <div className="space-y-1.5">
         <Etiqueta htmlFor="e-dpi">DPI de la paciente</Etiqueta>
         <Entrada
@@ -166,7 +172,7 @@ function FormularioEmergencia({ onCancelar }: { onCancelar: () => void }) {
           onChange={(e) => setDpi(e.target.value)}
           aria-invalid={error?.campo === "dpi"}
           aria-describedby={error?.campo === "dpi" ? "e-dpi-error" : undefined}
-          className={cn("num font-mono text-[1.1rem] tracking-[0.04em]", error?.campo === "dpi" && "border-alerta")}
+          className={cn("cifra text-[1.1rem] tracking-[0.04em]", error?.campo === "dpi" && "border-alerta")}
         />
         {error?.campo === "dpi" && <MensajeError id="e-dpi-error">{error.mensaje}</MensajeError>}
       </div>
@@ -185,20 +191,20 @@ function FormularioEmergencia({ onCancelar }: { onCancelar: () => void }) {
         {error?.campo === "motivo" ? (
           <MensajeError id="e-motivo-error">{error.mensaje}</MensajeError>
         ) : (
-          <p id="e-motivo-ayuda" className="text-[0.88rem] text-tinta-tenue">
+          <p id="e-motivo-ayuda" className="text-[0.95rem] text-tinta-suave">
             La paciente lo verá en su bitácora.
           </p>
         )}
       </div>
       {error?.campo === "general" && <MensajeError>{error.mensaje}</MensajeError>}
-      <div className="flex flex-wrap gap-2.5">
-        <Boton type="submit" variante="alerta" tamaño="lg" disabled={enviando}>
+      <button type="button" onClick={onCancelar} disabled={enviando} className="-ml-2 inline-flex min-h-12 items-center rounded-[10px] px-2 font-semibold text-primario hover:bg-primario-suave">
+        Cancelar
+      </button>
+      <BarraAccion>
+        <Boton type="submit" form="form-emergencia" variante="alerta" tamaño="accion" disabled={enviando}>
           {enviando ? <LoaderCircle className="animate-spin" /> : <Siren />} Abrir acceso de emergencia
         </Boton>
-        <Boton type="button" variante="secundario" tamaño="lg" onClick={onCancelar} disabled={enviando}>
-          Cancelar
-        </Boton>
-      </div>
+      </BarraAccion>
     </form>
   );
 }

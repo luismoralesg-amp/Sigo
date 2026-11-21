@@ -137,9 +137,9 @@ function FalloSesion({ error, onReintentar }: { error: ErrorApi; onReintentar: (
   return (
     <div className="mx-auto grid min-h-dvh max-w-md place-items-center px-4 text-center">
       <div>
-        <p className="text-[1.3rem] font-semibold">{error.codigo === "sin_senal" ? "Sin señal" : "No pudimos abrir tu sesión"}</p>
+        <p className="subtitulo">{error.codigo === "sin_senal" ? "Sin señal" : "No pudimos abrir tu sesión"}</p>
         <p className="mt-2 text-tinta-suave">{error.mensaje}</p>
-        <button onClick={onReintentar} className="mt-6 min-h-11 rounded-[12px] bg-primario px-5 font-semibold text-white hover:bg-primario-hover">
+        <button onClick={onReintentar} className="mt-6 min-h-14 w-full rounded-[12px] bg-primario px-5 font-semibold text-white hover:bg-primario-hover">
           Intentar de nuevo
         </button>
       </div>

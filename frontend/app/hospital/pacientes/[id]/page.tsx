@@ -165,7 +165,7 @@ function Asistente({ pacienteId }: { pacienteId: string }) {
                 <ul className="mt-2 flex flex-wrap gap-2">
                   {t.fuentes.map((f) => (
                     <li key={`${f.consulta_id}-${f.campo}`}>
-                      <button onClick={() => setOriginal(f)} className="inline-flex min-h-10 items-center gap-1.5 rounded-[10px] border border-linea bg-superficie px-3 text-[0.9rem] font-semibold text-primario">
+                      <button onClick={() => setOriginal(f)} className="inline-flex min-h-12 items-center gap-1.5 rounded-[10px] border border-linea bg-superficie px-3 text-[0.9rem] font-semibold text-primario">
                         <FileText className="h-4 w-4" aria-hidden="true" /> Ver original
                       </button>
                     </li>

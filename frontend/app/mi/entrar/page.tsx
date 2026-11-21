@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { Logo } from "@/components/marca/logo";
 import { PanelMarca } from "@/components/marca/panel";
-import { Boton } from "@/components/ui/button";
+import { Boton, BarraAccion } from "@/components/ui/button";
 import { Entrada, Etiqueta } from "@/components/ui/input";
 import { MensajeError } from "@/components/estado";
 import { esIdentificador, normalizarIdentificador, USA_MOCKS } from "@/lib/api/cliente";
@@ -54,8 +54,8 @@ export default function PaginaEntrarPaciente() {
           <div className="lg:hidden">
             <Logo tamaño="lg" animado />
           </div>
-          <h1 className="mt-10 text-[2.4rem] leading-[1.03] text-primario sm:text-[2.8rem] lg:mt-0">Ver mi historial</h1>
-          <p className="mt-3 text-tinta-suave">Entra con tu DPI y el PIN de 6 números que te dieron en el puesto de salud.</p>
+          <h1 className="titulo mt-8 lg:mt-0">Ver mi historial</h1>
+          <p className="mt-2 text-tinta-suave">Entra con tu DPI y el PIN de 6 números que te dieron en el puesto de salud.</p>
 
           <form onSubmit={entrar} className="mt-7 space-y-5" noValidate>
             <div className="space-y-1.5">
@@ -64,12 +64,12 @@ export default function PaginaEntrarPaciente() {
                 id="dpi"
                 inputMode="numeric"
                 autoComplete="username"
-                placeholder="2547 89631 0801"
+                placeholder="2547 89633 0801"
                 value={dpi}
                 onChange={(e) => setDpi(e.target.value)}
                 aria-invalid={error?.campo === "dpi"}
                 aria-describedby={error?.campo === "dpi" ? "error-dpi" : undefined}
-                className={cn("num min-h-14 font-mono text-[1.15rem] tracking-[0.04em]", error?.campo === "dpi" && "border-alerta")}
+                className={cn("num min-h-14 text-[1.15rem] tracking-[0.04em]", error?.campo === "dpi" && "border-alerta")}
               />
               {error?.campo === "dpi" && <MensajeError id="error-dpi">{error.mensaje}</MensajeError>}
             </div>
@@ -85,21 +85,23 @@ export default function PaginaEntrarPaciente() {
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 aria-invalid={error?.campo === "pin"}
                 aria-describedby={error?.campo === "pin" ? "error-pin" : undefined}
-                className={cn("num min-h-14 font-mono text-[1.4rem] tracking-[0.5em]", error?.campo === "pin" && "border-alerta")}
+                className={cn("num min-h-14 text-[1.4rem] tracking-[0.5em]", error?.campo === "pin" && "border-alerta")}
               />
               {error?.campo === "pin" && <MensajeError id="error-pin">{error.mensaje}</MensajeError>}
             </div>
             {error?.campo === "general" && <MensajeError>{error.mensaje}</MensajeError>}
-            <Boton type="submit" tamaño="lg" className="w-full" disabled={entrando}>
-              {entrando && <LoaderCircle className="animate-spin" />} {entrando ? "Entrando…" : "Entrar"}
-            </Boton>
+            <BarraAccion soloMovil>
+              <Boton type="submit" tamaño="accion" disabled={entrando}>
+                {entrando && <LoaderCircle className="animate-spin" />} {entrando ? "Entrando…" : "Ver mi historial"}
+              </Boton>
+            </BarraAccion>
           </form>
 
           <p className="mt-6 text-[0.92rem] text-tinta-suave">¿No tienes PIN? Pídelo en tu puesto de salud.</p>
-          {USA_MOCKS && <p className="mt-2 text-[0.88rem] text-tinta-tenue">Demo: DPI 2547 89631 0801, PIN 482193.</p>}
+          {USA_MOCKS && <p className="cifra mt-2 text-[0.92rem] text-tinta-suave">Demo: DPI 2547 89633 0801, PIN 482193.</p>}
           <p className="mt-8 border-t border-linea pt-5 text-[0.92rem] text-tinta-suave">
             ¿Trabajas en un puesto u hospital?{" "}
-            <Link href="/login" className="font-semibold text-primario underline-offset-4 hover:underline">
+            <Link href="/login" className="inline-flex min-h-12 items-center font-semibold text-primario underline">
               Entrada del personal
             </Link>
           </p>

@@ -10,7 +10,7 @@ import Link from "next/link";
 import { ArrowLeft, Camera, KeyRound, LoaderCircle, Pencil, ScrollText, X } from "lucide-react";
 import type { Expediente, Paciente } from "@/lib/types";
 import { Shell } from "@/components/shell";
-import { Boton } from "@/components/ui/button";
+import { Boton, BarraAccion } from "@/components/ui/button";
 import { Entrada, Etiqueta } from "@/components/ui/input";
 import { Cargando, ErrorPantalla, MensajeError } from "@/components/estado";
 import { CabeceraPaciente } from "@/components/expediente/cabecera";
@@ -28,7 +28,7 @@ export default function PaginaPacientePuesto({ params }: { params: Promise<{ id:
 
   return (
     <Shell ancho="amplio">
-      <Link href="/puesto" className="-ml-2 mb-3 inline-flex min-h-11 items-center gap-1.5 rounded-[10px] px-2 font-semibold text-tinta-suave hover:text-tinta">
+      <Link href="/puesto" className="-ml-2 mb-3 inline-flex min-h-12 items-center gap-1.5 rounded-[10px] px-2 font-semibold text-tinta-suave hover:text-tinta">
         <ArrowLeft className="h-5 w-5" /> Buscar otro paciente
       </Link>
 
@@ -70,12 +70,7 @@ function Contenido({
   return (
     <>
       <CabeceraPaciente paciente={e.paciente}>
-        <Boton asChild tamaño="lg">
-          <Link href={captura}>
-            <Camera /> Escanear ficha
-          </Link>
-        </Boton>
-        <Boton tamaño="lg" variante="secundario" onClick={() => setPanel(panel === "codigo" ? null : "codigo")} aria-expanded={panel === "codigo"}>
+        <Boton variante="secundario" onClick={() => setPanel(panel === "codigo" ? null : "codigo")} aria-expanded={panel === "codigo"}>
           <KeyRound /> Generar código
         </Boton>
       </CabeceraPaciente>
@@ -91,28 +86,23 @@ function Contenido({
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section aria-labelledby="titulo-consultas" className="min-w-0">
-          <h2 id="titulo-consultas" className="mb-4 text-[1.4rem] font-semibold">
+          <h2 id="titulo-consultas" className="subtitulo mb-4">
             Consultas
           </h2>
           {e.consultas.length ? (
             <LineaTiempo consultas={e.consultas} corregible onCorregida={onRecargar} />
           ) : (
-            <div className="papel-kraft esquina-doblada rounded-[16px] p-6 text-kraft-tinta">
-              <ScrollText className="h-7 w-7" strokeWidth={1.75} aria-hidden="true" />
-              <p className="mt-3 text-[1.1rem] font-semibold text-primario">Todavía no hay consultas</p>
-              <p className="mt-1">Escanea su primera ficha en papel. Lo que lea la IA lo revisas tú antes de guardar.</p>
-              <Boton asChild className="mt-4">
-                <Link href={captura}>
-                  <Camera /> Escanear ficha
-                </Link>
-              </Boton>
+            <div className="tarjeta p-5">
+              <ScrollText className="h-7 w-7 text-tinta-suave" strokeWidth={1.75} aria-hidden="true" />
+              <p className="mt-3 font-semibold">Todavía no hay consultas</p>
+              <p className="mt-1 text-tinta-suave">Escanea su primera ficha en papel con el botón de abajo. Lo que lea la IA lo revisas tú antes de guardar.</p>
             </div>
           )}
         </section>
 
-        <aside className="min-w-0 space-y-4 lg:pt-[3.05rem]">
+        <aside className="min-w-0 space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-[1.1rem] font-semibold">Datos y alertas</h2>
+            <h2 className="subtitulo">Datos y alertas</h2>
             {panel !== "datos" && (
               <Boton variante="fantasma" onClick={() => setPanel("datos")}>
                 <Pencil /> Corregir
@@ -131,19 +121,27 @@ function Contenido({
           ) : (
             <PanelAlertas alertas={e.alertas} className="sm:grid-cols-1" />
           )}
-          <p className="text-[0.88rem] text-tinta-tenue">Datos del paciente en su versión {e.paciente.version}. El DPI no se corrige desde la app.</p>
+          <p className="text-[0.95rem] text-tinta-suave">Datos del paciente en su versión {e.paciente.version}. El DPI no se corrige desde la app.</p>
         </aside>
       </div>
+
+      <BarraAccion>
+        <Boton asChild tamaño="accion">
+          <Link href={captura}>
+            <Camera /> Escanear ficha
+          </Link>
+        </Boton>
+      </BarraAccion>
     </>
   );
 }
 
 function Panel({ titulo, onCerrar, children }: { titulo: string; onCerrar: () => void; children: React.ReactNode }) {
   return (
-    <section className="mt-6 rounded-[18px] border border-linea bg-superficie p-5 shadow-calida sm:p-6" aria-label={titulo}>
+    <section className="mt-6 rounded-[12px] border border-linea bg-superficie p-5 sm:p-6" aria-label={titulo}>
       <div className="mb-2 flex items-start justify-between gap-3">
-        <h2 className="text-[1.25rem] font-semibold">{titulo}</h2>
-        <button onClick={onCerrar} className="-mr-2 -mt-2 grid h-11 w-11 place-items-center rounded-full text-tinta-suave hover:bg-papel" aria-label="Cerrar">
+        <h2 className="subtitulo">{titulo}</h2>
+        <button onClick={onCerrar} className="-mr-2 -mt-2 grid h-12 w-12 place-items-center rounded-full text-tinta-suave hover:bg-papel" aria-label="Cerrar">
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -181,7 +179,7 @@ function CorregirPaciente({ p, onCancelar, onGuardado }: { p: Paciente; onCancel
   }
 
   return (
-    <form onSubmit={guardar} className="space-y-3.5 rounded-[16px] border border-linea bg-superficie p-4" aria-label="Corregir datos del paciente">
+    <form onSubmit={guardar} className="space-y-3.5 rounded-[12px] border border-linea bg-superficie p-4" aria-label="Corregir datos del paciente">
       <div className="space-y-1.5">
         <Etiqueta htmlFor="c-nombre">Nombre completo</Etiqueta>
         <Entrada id="c-nombre" value={v.nombre} onChange={set("nombre")} />

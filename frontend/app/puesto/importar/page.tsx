@@ -159,7 +159,7 @@ function Resultado({ r, onOtro }: { r: ResultadoImportacion; onOtro: () => void 
                     key={v}
                     onClick={() => setVerFilas(v)}
                     aria-pressed={verFilas === v}
-                    className={cn("min-h-10 rounded-[9px] px-3 text-[0.95rem] font-semibold", verFilas === v ? "bg-primario text-white" : "text-tinta-suave")}
+                    className={cn("min-h-12 rounded-[9px] px-3 font-semibold", verFilas === v ? "bg-primario text-white" : "text-tinta-suave")}
                   >
                     {v === "error" ? `Con error (${r.con_errores})` : `Todas (${r.total_filas})`}
                   </button>

@@ -29,7 +29,7 @@ export function LineaTiempo({
   let añoPrevio = "";
   return (
     <ol className="relative">
-      <span className="absolute bottom-4 left-[7px] top-3 w-[2px] rounded-full bg-[linear-gradient(180deg,var(--primario)_0%,var(--linea-fuerte)_45%,var(--kraft-borde)_100%)]" aria-hidden="true" />
+      <span className="absolute bottom-4 left-[7px] top-3 w-[2px] rounded-full bg-linea" aria-hidden="true" />
       {consultas.map((c) => {
         const año = c.fecha?.slice(0, 4) ?? "Sin fecha";
         const nuevoAño = año !== añoPrevio;
@@ -70,14 +70,14 @@ function TarjetaConsulta({ c, versiones, corregible, onCorregida }: { c: Consult
   }
 
   return (
-    <article className="rounded-[16px] border border-linea bg-superficie p-4 shadow-calida sm:p-5">
+    <article className="rounded-[12px] border border-linea bg-superficie p-4 sm:p-5">
       <div className="flex gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <time dateTime={c.fecha ?? undefined} className="num font-display text-[1.2rem] font-semibold">
+            <time dateTime={c.fecha ?? undefined} className="cifra text-[1.15rem] font-semibold">
               {c.fecha ? fechaCorta(c.fecha) : "Fecha no registrada"}
             </time>
-            {c.version > 1 && <span className="text-[0.85rem] font-semibold text-kraft-tinta">Corregida, versión {c.version}</span>}
+            {c.version > 1 && <span className="text-[0.9rem] font-semibold text-tinta-suave">Corregida, versión {c.version}</span>}
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-[0.9rem] text-tinta-tenue">
             <IconoCentro className="h-4 w-4 shrink-0" aria-hidden="true" /> {c.centro.nombre}
@@ -268,7 +268,7 @@ function Miniatura({ url, onAbrir }: { url: string; onAbrir: () => void }) {
   return (
     <button
       onClick={onAbrir}
-      className="group relative h-[78px] w-[62px] shrink-0 overflow-hidden rounded-[8px] border border-kraft-borde bg-kraft-claro shadow-calida transition-transform duration-200 hover:scale-105"
+      className="group relative h-[78px] w-[62px] shrink-0 overflow-hidden rounded-[8px] border border-kraft-borde bg-kraft-claro transition-transform duration-200 hover:scale-105"
       aria-label="Ver el original"
     >
       {esImagen(url) ? (
@@ -300,7 +300,7 @@ export function VisorOriginal({ url, titulo, abierto, onCerrar }: { url: string;
             <img src={url} alt={titulo} className="mx-auto max-h-[72dvh] w-auto" />
           </div>
         ) : (
-          <a href={url} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-[12px] border border-linea px-4 font-semibold text-primario hover:bg-primario-suave">
+          <a href={url} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-[12px] border border-linea px-4 font-semibold text-primario hover:bg-primario-suave">
             <FileText className="h-5 w-5" /> Abrir el archivo original
           </a>
         )}

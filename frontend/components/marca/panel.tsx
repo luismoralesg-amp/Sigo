@@ -6,7 +6,10 @@ const PASOS = [
   { titulo: "El médico consulta", texto: "Solo mientras el código esté vigente." },
 ];
 
-/** Panel marino de las pantallas de entrada (solo en escritorio). Los pasos son la secuencia real del flujo. */
+/**
+ * Panel marino de las pantallas de entrada (solo en computadora). Es el único lugar con las formas curvas del logo.
+ * Los pasos son la secuencia real del flujo. El cobre va solo como acento (raya), nunca como texto.
+ */
 export function PanelMarca({ titulo }: { titulo: string }) {
   return (
     <aside className="relative hidden overflow-hidden bg-primario text-[#EEEAE5] lg:flex lg:flex-col lg:justify-between lg:p-14">
@@ -15,18 +18,19 @@ export function PanelMarca({ titulo }: { titulo: string }) {
         <Logo tamaño="lg" invertido />
       </div>
       <div className="relative">
-        <h2 className="max-w-xl text-[2.7rem] font-bold leading-[1.03] text-[#EEEAE5]">{titulo}</h2>
-        <ol className="mt-9 grid grid-cols-3 gap-3">
+        <span className="block h-1 w-12 rounded-full bg-cobre" aria-hidden="true" />
+        <h2 className="mt-5 max-w-xl text-[1.55rem] leading-tight text-white">{titulo}</h2>
+        <ol className="mt-8 grid grid-cols-3 gap-3">
           {PASOS.map((p, i) => (
-            <li key={p.titulo} className={i === 1 ? "rounded-[18px] bg-kraft-borde p-5 text-primario" : "rounded-[18px] bg-[#31416a] p-5"}>
-              <span className={i === 1 ? "num font-display text-[1rem] font-bold text-primario/70" : "num font-display text-[1rem] font-bold text-[#e3bd96]"}>{i + 1}</span>
-              <p className="mt-2 font-display text-[1.25rem] font-bold leading-tight">{p.titulo}</p>
-              <p className={i === 1 ? "mt-2 text-[0.9rem] leading-snug text-primario/85" : "mt-2 text-[0.9rem] leading-snug text-[#EEEAE5]/80"}>{p.texto}</p>
+            <li key={p.titulo} className="rounded-[12px] bg-[#2f416b] p-5">
+              <span className="cifra font-semibold text-[#EEEAE5]">{i + 1}</span>
+              <p className="mt-2 font-semibold leading-snug text-white">{p.titulo}</p>
+              <p className="mt-1.5 leading-snug text-[#EEEAE5]">{p.texto}</p>
             </li>
           ))}
         </ol>
       </div>
-      <p className="relative text-[0.85rem] text-[#EEEAE5]/70">Tu historia te sigue. Datos de demostración, todos inventados.</p>
+      <p className="relative text-[#EEEAE5]">Tu historia te sigue. Datos de demostración, todos inventados.</p>
     </aside>
   );
 }

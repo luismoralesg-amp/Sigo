@@ -69,7 +69,7 @@ export function EscanerQR({ onCodigo }: { onCodigo: (codigo: string) => void }) 
       <DialogoContenido className="max-w-md">
         <DialogoTitulo className="pr-12 font-display text-[1.35rem] font-semibold">Escanear el QR de la paciente</DialogoTitulo>
         <DialogoDescripcion className="mt-1 text-tinta-suave">Apunta la cámara al código que aparece en su celular.</DialogoDescripcion>
-        <div className="mt-4 aspect-square overflow-hidden rounded-[14px] bg-tinta">
+        <div className="mt-4 aspect-square overflow-hidden rounded-[12px] bg-tinta">
           <video ref={video} muted playsInline className="h-full w-full object-cover" />
         </div>
         {mensaje && (

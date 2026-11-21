@@ -448,7 +448,7 @@ function CampoRevisable({
         )}
         {r.baja &&
           (pendiente ? (
-            <button type="button" onClick={() => onCambio({ ...r, revisado: true })} className="etiqueta-dudoso min-h-10 border border-revisar">
+            <button type="button" onClick={() => onCambio({ ...r, revisado: true })} className="etiqueta-dudoso min-h-12 border border-revisar px-4">
               Está bien
             </button>
           ) : (

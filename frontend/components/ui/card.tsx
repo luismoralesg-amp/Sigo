@@ -1,11 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+/** Tarjeta blanca con borde arena de 1 px y radio de 12 px. */
 export function Tarjeta({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-[18px] border border-linea bg-superficie shadow-calida", className)} {...props} />;
-}
-
-/** Superficie que "viene del papel": kraft, grano y esquina doblada. */
-export function TarjetaPapel({ className, doblada = true, ...props }: React.HTMLAttributes<HTMLDivElement> & { doblada?: boolean }) {
-  return <div className={cn("papel-kraft rounded-[14px] shadow-calida", doblada && "esquina-doblada", className)} {...props} />;
+  return <div className={cn("tarjeta", className)} {...props} />;
 }

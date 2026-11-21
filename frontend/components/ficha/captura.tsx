@@ -1,15 +1,16 @@
 "use client";
 import { useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import imageCompression from "browser-image-compression";
 import { Camera, ImagePlus, X, ScrollText, LoaderCircle, ScanLine, Lightbulb } from "lucide-react";
-import { Boton } from "@/components/ui/button";
+import { Boton, BarraAccion } from "@/components/ui/button";
 
 export interface Foto {
   id: string;
   url: string;
   archivo: File;
 }
+
+const MAX_PAGINAS = 4;
 
 /** Compresión del contrato: 1600 px de lado y menos de 1.5 MB por foto. `fuerte` se usa al reintentar tras un 413. */
 export async function comprimir(f: File | Blob, fuerte = false): Promise<File> {
@@ -46,18 +47,18 @@ export function Captura({
     setPreparando(true);
     try {
       const nuevas: Foto[] = [];
-      for (const f of Array.from(lista).slice(0, 4 - fotos.length)) {
+      for (const f of Array.from(lista).slice(0, MAX_PAGINAS - fotos.length)) {
         if (!f.type.startsWith("image/")) {
           setError("Ese archivo no es una foto. Usa la cámara o elige una imagen.");
           continue;
         }
-        // Comprimir en el celular: se sube más rápido con poca señal
+        // Comprimir en el celular: se sube más rápido con poca señal.
         const comprimida = await comprimir(f);
         nuevas.push({ id: crypto.randomUUID(), url: URL.createObjectURL(comprimida), archivo: comprimida });
       }
       setFotos([...fotos, ...nuevas]);
     } catch {
-      setError("No pudimos preparar la foto. Intenta tomarla de nuevo.");
+      setError("No se pudo preparar la foto. Tómala otra vez.");
     } finally {
       setPreparando(false);
     }
@@ -77,12 +78,13 @@ export function Captura({
   }
 
   const quitar = (id: string) => setFotos(fotos.filter((f) => f.id !== id));
+  const mensaje = error ?? errorSubida;
 
   return (
-    <div className="pb-28">
-      <h1 className="text-[2rem] leading-tight text-primario sm:text-[2.3rem]">Escanear ficha</h1>
-      <p className="mt-2 text-tinta-suave">
-        Para <span className="font-semibold text-tinta">{paciente}</span>. Toma una foto de la ficha completa; si tiene varias páginas, una foto por página.
+    <div>
+      <h1 className="titulo">Escanear ficha</h1>
+      <p className="mt-1.5 text-tinta-suave">
+        De <span className="font-semibold text-tinta">{paciente}</span>. Una foto por página; puedes agregar hasta {MAX_PAGINAS}.
       </p>
 
       <input
@@ -94,83 +96,73 @@ export function Captura({
         className="sr-only"
         id="foto-ficha"
         onChange={(e) => {
-          if (e.target.files?.length) agregar(e.target.files);
+          if (e.target.files?.length) void agregar(e.target.files);
           e.target.value = "";
         }}
       />
 
-      <AnimatePresence mode="popLayout" initial={false}>
-        {fotos.length === 0 ? (
-          <motion.label
-            key="vacio"
-            htmlFor="foto-ficha"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.2 }}
-            className="papel-kraft group mt-6 flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-[22px] border-2 border-dashed !border-kraft-borde p-6 text-center transition-colors hover:!border-primario/50 focus-within:outline-3 focus-within:outline-primario"
-          >
-            <span className="grid h-20 w-20 place-items-center rounded-full bg-primario text-white shadow-[0_10px_24px_-10px_rgba(40,54,89,.8)] transition-transform duration-200 group-hover:scale-105">
-              <Camera className="h-9 w-9" strokeWidth={1.75} />
-            </span>
-            <span className="mt-5 font-display text-[1.45rem] font-semibold text-tinta">Tomar foto de la ficha</span>
-            <span className="mt-1 text-kraft-tinta">o elegir una de la galería</span>
-          </motion.label>
-        ) : (
-          <motion.div key="fotos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {fotos.map((f, i) => (
-              <motion.figure key={f.id} layout initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.22 }} className="papel-kraft relative overflow-hidden rounded-[14px] p-1.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.url} alt={`Página ${i + 1} de la ficha`} className="aspect-[3/4] w-full rounded-[10px] object-cover" />
-                <figcaption className="absolute bottom-3 left-3 rounded-full bg-tinta/75 px-2.5 py-1 text-[0.75rem] font-semibold text-white">Página {i + 1}</figcaption>
-                <button onClick={() => quitar(f.id)} className="absolute right-2.5 top-2.5 grid h-11 w-11 place-items-center rounded-full bg-superficie/95 text-tinta shadow-calida" aria-label={`Quitar página ${i + 1}`}>
-                  <X className="h-5 w-5" />
-                </button>
-              </motion.figure>
-            ))}
-            {fotos.length < 4 && (
-              <label htmlFor="foto-ficha" className="grid aspect-[3/4] cursor-pointer place-items-center rounded-[14px] border-2 border-dashed border-linea-fuerte bg-superficie text-center text-tinta-suave transition-colors hover:border-primario/50 hover:text-primario">
-                <span>
-                  <ImagePlus className="mx-auto h-8 w-8" strokeWidth={1.75} />
-                  <span className="mt-2 block px-2 text-[0.9rem] font-semibold">Agregar otra página</span>
-                </span>
+      {fotos.length === 0 ? (
+        <label
+          htmlFor="foto-ficha"
+          className="tarjeta mt-5 flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 border-dashed p-6 text-center hover:border-primario focus-within:outline focus-within:outline-3 focus-within:outline-primario"
+        >
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-primario text-white">
+            <Camera className="h-8 w-8" strokeWidth={1.75} aria-hidden="true" />
+          </span>
+          <span className="subtitulo">Tomar foto de la ficha</span>
+          <span className="text-tinta-suave">o elegir una de la galería</span>
+        </label>
+      ) : (
+        <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Páginas">
+          {fotos.map((f, i) => (
+            <li key={f.id} className="tarjeta relative overflow-hidden p-1.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={f.url} alt={`Página ${i + 1} de la ficha`} className="aspect-[3/4] w-full rounded-[8px] object-cover" />
+              <span className="absolute bottom-3 left-3 rounded-full bg-primario px-2.5 py-1 text-[0.85rem] font-semibold text-white">Página {i + 1}</span>
+              <button onClick={() => quitar(f.id)} className="absolute right-2 top-2 grid h-12 w-12 place-items-center rounded-full border border-linea bg-superficie text-tinta" aria-label={`Quitar página ${i + 1}`}>
+                <X className="h-5 w-5" />
+              </button>
+            </li>
+          ))}
+          {fotos.length < MAX_PAGINAS && (
+            <li>
+              <label htmlFor="foto-ficha" className="tarjeta flex aspect-[3/4] cursor-pointer flex-col items-center justify-center gap-2 border-dashed p-2 text-center text-primario hover:border-primario">
+                <ImagePlus className="h-7 w-7" strokeWidth={1.75} aria-hidden="true" />
+                <span className="font-semibold">Agregar página</span>
               </label>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </li>
+          )}
+        </ul>
+      )}
 
       {preparando && (
         <p className="mt-4 flex items-center gap-2 text-tinta-suave" role="status">
-          <LoaderCircle className="h-5 w-5 animate-spin text-primario" /> Preparando la foto…
+          <LoaderCircle className="h-5 w-5 animate-spin text-primario" aria-hidden="true" /> Preparando la foto…
         </p>
       )}
-      {(error || errorSubida) && (
-        <p className="mt-4 rounded-[12px] bg-alerta-fondo px-4 py-3 text-alerta" role="alert">
-          {error ?? errorSubida}
+      {mensaje && (
+        <p className="aviso-alerta mt-4 px-4 py-3" role="alert">
+          {mensaje}
         </p>
       )}
 
-      <div className="mt-6 flex items-start gap-3 rounded-[14px] border border-linea bg-superficie p-4 text-[0.92rem] text-tinta-suave">
-        <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-revisar-tinta" />
-        <p>Pon la ficha sobre una mesa, con luz de ventana y sin sombra de tu mano. La foto original se guarda junto a los datos.</p>
-      </div>
+      <p className="mt-5 flex items-start gap-3 text-tinta-suave">
+        <Lightbulb className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+        Ficha sobre una mesa, con luz de ventana y sin sombra de la mano. La foto original se guarda junto a los datos.
+      </p>
 
       {fotos.length === 0 && (
-        <button onClick={usarEjemplo} className="mt-4 flex min-h-11 items-center gap-2 rounded-[12px] px-2 font-semibold text-primario hover:bg-primario-suave">
-          <ScrollText className="h-5 w-5" /> Probar con la ficha de ejemplo
+        <button onClick={usarEjemplo} className="-ml-2 mt-3 flex min-h-12 items-center gap-2 rounded-[10px] px-2 font-semibold text-primario hover:bg-primario-suave">
+          <ScrollText className="h-5 w-5" aria-hidden="true" /> Probar con la ficha de ejemplo
         </button>
       )}
 
-      {/* barra fija */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-linea bg-superficie/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-3">
-          <p className="hidden flex-1 text-tinta-suave sm:block">{fotos.length ? `${fotos.length} ${fotos.length === 1 ? "página lista" : "páginas listas"}` : "Agrega al menos una foto"}</p>
-          <Boton tamaño="xl" className="w-full sm:w-auto" disabled={!fotos.length || preparando || ocupado} onClick={onLeer}>
-            {ocupado ? <LoaderCircle className="animate-spin" /> : <ScanLine />} {ocupado ? "Subiendo…" : "Leer ficha"}
-          </Boton>
-        </div>
-      </div>
+      <BarraAccion>
+        <Boton tamaño="accion" disabled={!fotos.length || preparando || ocupado} onClick={onLeer}>
+          {ocupado ? <LoaderCircle className="animate-spin" /> : <ScanLine />}{" "}
+          {ocupado ? "Subiendo…" : fotos.length ? `Leer ficha (${fotos.length} ${fotos.length === 1 ? "página" : "páginas"})` : "Toma al menos una foto"}
+        </Boton>
+      </BarraAccion>
     </div>
   );
 }

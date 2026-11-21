@@ -12,12 +12,12 @@ export default function PaginaCompartir() {
   const { usuario } = useUsuario();
   return (
     <Shell>
-      <h1 className="text-[2rem] leading-tight text-primario sm:text-[2.4rem]">Compartir mi historial</h1>
+      <h1 className="titulo">Compartir mi historial</h1>
       <p className="mt-2 max-w-[62ch] text-tinta-suave">
         Genera un código y muéstraselo al médico. Sirve una sola vez y hay que usarlo en los próximos 10 minutos. Con él, el médico puede ver tu historial durante {DURACION_ACCESO_TEXTO}; después se cierra solo. Siempre puedes ver quién lo abrió.
       </p>
       <div className="mt-7">
-        <GenerarCodigo pacienteId={usuario.paciente_id!} para="paciente" />
+        <GenerarCodigo pacienteId={usuario.paciente_id!} para="paciente" accionFija />
       </div>
     </Shell>
   );

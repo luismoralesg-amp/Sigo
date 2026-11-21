@@ -12,7 +12,7 @@ export function BannerAlergias({ alergias, className }: { alergias: string[]; cl
   return (
     <section
       aria-label="Alergias del paciente"
-      className={cn("flex items-center gap-3 rounded-[14px] border border-alerta/35 bg-alerta-fondo px-4 py-3 sm:px-5", className)}
+      className={cn("flex items-center gap-3 rounded-[12px] border border-alerta/35 bg-alerta-fondo px-4 py-3 sm:px-5", className)}
     >
       <TriangleAlert className="h-6 w-6 shrink-0 text-alerta" strokeWidth={2.25} aria-hidden="true" />
       <p className="text-[1.08rem] leading-snug text-tinta sm:text-[1.15rem]">

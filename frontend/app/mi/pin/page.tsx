@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CircleCheck, LoaderCircle } from "lucide-react";
 import { Shell } from "@/components/shell";
-import { Boton } from "@/components/ui/button";
+import { Boton, BarraAccion } from "@/components/ui/button";
 import { Entrada, Etiqueta } from "@/components/ui/input";
 import { MensajeError } from "@/components/estado";
 import { api } from "@/lib/api/cliente";
@@ -60,9 +60,9 @@ export default function PaginaPin() {
         onChange={set(k)}
         aria-invalid={error?.campo === k}
         aria-describedby={error?.campo === k ? `error-${k}` : ayuda ? `ayuda-${k}` : undefined}
-        className={cn("num min-h-14 font-mono text-[1.4rem] tracking-[0.5em]", error?.campo === k && "border-alerta")}
+        className={cn("num min-h-14 text-[1.4rem] tracking-[0.5em]", error?.campo === k && "border-alerta")}
       />
-      {error?.campo === k ? <MensajeError id={`error-${k}`}>{error.mensaje}</MensajeError> : ayuda && <p id={`ayuda-${k}`} className="text-[0.88rem] text-tinta-tenue">{ayuda}</p>}
+      {error?.campo === k ? <MensajeError id={`error-${k}`}>{error.mensaje}</MensajeError> : ayuda && <p id={`ayuda-${k}`} className="text-[0.95rem] text-tinta-suave">{ayuda}</p>}
     </div>
   );
 
@@ -71,11 +71,13 @@ export default function PaginaPin() {
       <Shell>
         <div className="mx-auto max-w-md py-10 text-center" role="status">
           <CircleCheck className="mx-auto h-12 w-12 text-confirmado" aria-hidden="true" />
-          <h1 className="mt-4 text-[1.7rem] font-semibold">Listo, tu PIN cambió</h1>
+          <h1 className="titulo mt-4">Listo, tu PIN cambió</h1>
           <p className="mt-2 text-tinta-suave">Desde ahora entras con el PIN nuevo. Nadie más lo conoce, ni el puesto de salud.</p>
-          <Boton className="mt-6" tamaño="lg" onClick={() => router.replace("/mi")}>
-            Ver mi historial
-          </Boton>
+          <BarraAccion>
+            <Boton tamaño="accion" onClick={() => router.replace("/mi")}>
+              Ver mi historial
+            </Boton>
+          </BarraAccion>
         </div>
       </Shell>
     );
@@ -83,7 +85,7 @@ export default function PaginaPin() {
   return (
     <Shell>
       <div className="mx-auto max-w-md">
-        <h1 className="text-[2rem] leading-tight text-primario">{obligatorio ? "Primero, elige tu propio PIN" : "Cambiar mi PIN"}</h1>
+        <h1 className="titulo">{obligatorio ? "Primero, elige tu propio PIN" : "Cambiar mi PIN"}</h1>
         <p className="mt-2 text-tinta-suave">
           {obligatorio ? "El PIN que te dieron en el puesto sirve solo para esta primera vez. Cámbialo por uno que solo tú sepas." : "Escribe tu PIN actual y el nuevo."}
         </p>
@@ -92,9 +94,11 @@ export default function PaginaPin() {
           {campo("nuevo", "PIN nuevo", "6 números. Evita tu fecha de nacimiento o 123456.")}
           {campo("repetir", "Repite el PIN nuevo")}
           {error?.campo === "general" && <MensajeError>{error.mensaje}</MensajeError>}
-          <Boton type="submit" tamaño="lg" className="w-full" disabled={guardando}>
-            {guardando && <LoaderCircle className="animate-spin" />} Guardar PIN nuevo
-          </Boton>
+          <BarraAccion>
+            <Boton type="submit" tamaño="accion" disabled={guardando}>
+              {guardando && <LoaderCircle className="animate-spin" />} Guardar PIN nuevo
+            </Boton>
+          </BarraAccion>
         </form>
       </div>
     </Shell>

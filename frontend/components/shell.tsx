@@ -44,12 +44,12 @@ export function Shell({ children, ancho = "normal", banda }: { children: React.R
             <Logo className="[&>span:last-child]:hidden sm:[&>span:last-child]:inline" />
           </Link>
           <div className="ml-auto min-w-0 text-right leading-tight">
-            <p className="truncate text-[0.9rem] font-semibold text-tinta">{usuario.nombre}</p>
-            <p className="truncate text-[0.8rem] text-tinta-tenue">{usuario.centro?.nombre ?? "Tu historial"}</p>
+            <p className="truncate text-[0.95rem] font-semibold text-tinta">{usuario.nombre}</p>
+            <p className="truncate text-[0.88rem] text-tinta-suave">{usuario.centro?.nombre ?? "Tu historial"}</p>
           </div>
           <button
             onClick={async () => router.replace(await salir())}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-tinta-suave transition-colors hover:bg-papel hover:text-tinta"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-tinta-suave hover:bg-papel hover:text-tinta"
             aria-label="Salir"
             title="Salir"
           >
@@ -65,8 +65,8 @@ export function Shell({ children, ancho = "normal", banda }: { children: React.R
                 href={n.href}
                 aria-current={on ? "page" : undefined}
                 className={cn(
-                  "relative flex min-h-12 shrink-0 items-center px-3 text-[0.95rem] font-semibold transition-colors",
-                  on ? "text-primario after:absolute after:inset-x-3 after:bottom-0 after:h-[3px] after:rounded-t after:bg-kraft-borde" : "text-tinta-suave hover:text-tinta"
+                  "relative flex min-h-12 shrink-0 items-center px-3 font-semibold",
+                  on ? "text-primario after:absolute after:inset-x-3 after:bottom-0 after:h-[3px] after:rounded-t after:bg-cobre" : "text-tinta-suave hover:text-tinta"
                 )}
               >
                 {n.texto}
@@ -76,7 +76,7 @@ export function Shell({ children, ancho = "normal", banda }: { children: React.R
         </nav>
       </header>
       <IndicadorConexion />
-      <main className={cn("mx-auto px-4 pb-16 pt-6 sm:px-6 sm:pt-9", contenedor)}>{children}</main>
+      <main className={cn("mx-auto px-4 pb-10 pt-5 sm:px-6 sm:pt-8", contenedor)}>{children}</main>
     </div>
   );
 }

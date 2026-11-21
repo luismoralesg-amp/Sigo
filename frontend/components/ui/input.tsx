@@ -6,7 +6,7 @@ export const Entrada = React.forwardRef<HTMLInputElement, React.InputHTMLAttribu
   <input
     ref={ref}
     className={cn(
-      "min-h-12 w-full rounded-[12px] border border-linea-fuerte bg-superficie px-3.5 text-[1rem] text-tinta shadow-[inset_0_1px_2px_rgba(92,64,28,.05)] transition-colors placeholder:text-tinta-tenue hover:border-[#c4b89f] focus-visible:border-primario focus-visible:outline-2 focus-visible:outline-offset-0",
+      "min-h-[52px] w-full rounded-[12px] border border-linea-fuerte bg-superficie px-3.5 text-[1rem] text-tinta placeholder:text-tinta-suave/80 focus-visible:border-primario focus-visible:outline-2 focus-visible:outline-offset-0",
       className
     )}
     {...props}
@@ -18,7 +18,7 @@ export const AreaTexto = React.forwardRef<HTMLTextAreaElement, React.TextareaHTM
   <textarea
     ref={ref}
     className={cn(
-      "min-h-12 w-full resize-y rounded-[12px] border border-linea-fuerte bg-superficie px-3.5 py-3 text-[1rem] leading-snug text-tinta placeholder:text-tinta-tenue hover:border-[#c4b89f] focus-visible:border-primario focus-visible:outline-2 focus-visible:outline-offset-0",
+      "min-h-[52px] w-full resize-y rounded-[12px] border border-linea-fuerte bg-superficie px-3.5 py-3 text-[1rem] leading-snug text-tinta placeholder:text-tinta-suave/80 focus-visible:border-primario focus-visible:outline-2 focus-visible:outline-offset-0",
       className
     )}
     {...props}
@@ -27,5 +27,5 @@ export const AreaTexto = React.forwardRef<HTMLTextAreaElement, React.TextareaHTM
 AreaTexto.displayName = "AreaTexto";
 
 export function Etiqueta({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) {
-  return <LabelPrimitive.Root className={cn("text-[0.9rem] font-semibold text-tinta-suave", className)} {...props} />;
+  return <LabelPrimitive.Root className={cn("text-[0.95rem] font-semibold text-tinta-suave", className)} {...props} />;
 }

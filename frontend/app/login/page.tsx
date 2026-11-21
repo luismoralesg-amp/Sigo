@@ -14,8 +14,8 @@ export default function PaginaLogin() {
           <div className="lg:hidden">
             <Logo tamaño="lg" animado />
           </div>
-          <h1 className="mt-10 text-[2.4rem] leading-[1.03] text-primario sm:text-[2.8rem] lg:mt-0">Entrar al puesto o al hospital</h1>
-          <p className="mt-3 text-tinta-suave">Para el personal de salud. Usa el correo de tu centro.</p>
+          <h1 className="titulo mt-8 lg:mt-0">Entrar al puesto o al hospital</h1>
+          <p className="mt-2 text-tinta-suave">Para el personal de salud. Usa el correo de tu centro.</p>
           <FormularioEntrada />
         </div>
       </main>

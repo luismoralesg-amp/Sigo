@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
-import { Boton } from "@/components/ui/button";
+import { Boton, BarraAccion } from "@/components/ui/button";
 import { Entrada, Etiqueta } from "@/components/ui/input";
 import { MensajeError } from "@/components/estado";
 import { entrarPersonal, INICIO_POR_ROL } from "@/lib/api/sesion";
@@ -52,14 +52,14 @@ export function FormularioEntrada() {
                   aria-checked={on}
                   onClick={() => setCorreo(d.correo)}
                   className={cn(
-                    "flex min-h-14 w-full items-center gap-3 rounded-[14px] border bg-superficie px-4 py-2.5 text-left transition-[border-color,box-shadow] duration-150",
-                    on ? "border-primario shadow-[0_0_0_3px_rgba(40,54,89,.14)]" : "border-linea hover:border-linea-fuerte"
+                    "flex min-h-16 w-full items-center gap-3 rounded-[12px] border bg-superficie px-4 py-2.5 text-left",
+                    on ? "border-2 border-primario" : "border-linea hover:border-linea-fuerte"
                   )}
                 >
-                  <span className={cn("h-4 w-4 shrink-0 rounded-full border-2", on ? "border-[5px] border-primario" : "border-linea-fuerte")} aria-hidden="true" />
+                  <span className={cn("h-5 w-5 shrink-0 rounded-full border-2", on ? "border-[6px] border-primario" : "border-linea-fuerte")} aria-hidden="true" />
                   <span className="min-w-0">
                     <span className="block font-semibold leading-snug">{d.titulo}</span>
-                    <span className="block text-[0.85rem] text-tinta-tenue">{d.detalle}</span>
+                    <span className="block text-[0.92rem] text-tinta-suave">{d.detalle}</span>
                   </span>
                 </button>
               );
@@ -79,14 +79,16 @@ export function FormularioEntrada() {
 
       <MensajeError>{error}</MensajeError>
 
-      <Boton type="submit" tamaño="lg" className="w-full" disabled={entrando}>
-        {entrando && <LoaderCircle className="animate-spin" />}
-        {entrando ? "Entrando…" : "Entrar"}
-      </Boton>
+      <BarraAccion soloMovil>
+        <Boton type="submit" tamaño="accion" disabled={entrando}>
+          {entrando && <LoaderCircle className="animate-spin" />}
+          {entrando ? "Entrando…" : "Entrar"}
+        </Boton>
+      </BarraAccion>
 
       <p className="pt-2 text-center text-tinta-suave">
         ¿Eres paciente?{" "}
-        <Link href="/mi/entrar" className="inline-flex min-h-11 items-center gap-1 font-semibold text-primario underline-offset-4 hover:underline">
+        <Link href="/mi/entrar" className="inline-flex min-h-12 items-center gap-1 font-semibold text-primario underline">
           Entra con tu DPI y PIN <ArrowRight className="h-4 w-4" />
         </Link>
       </p>

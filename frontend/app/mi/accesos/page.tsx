@@ -27,14 +27,14 @@ export default function PaginaAccesos() {
 
   return (
     <Shell>
-      <h1 className="text-[2rem] leading-tight text-primario sm:text-[2.4rem]">Quién vio mi historial</h1>
+      <h1 className="titulo">Quién vio mi historial</h1>
       <p className="mt-2 text-tinta-suave">Cada vez que alguien abre tu historial queda anotado aquí. Nadie lo puede borrar.</p>
 
       <div className="mt-7">
         {r.estado === "cargando" && <Cargando filas={3} />}
         {r.estado === "error" && <ErrorPantalla error={r.error} onReintentar={() => r.recargar()} />}
         {r.estado === "listo" && r.datos.accesos.length === 0 && (
-          <div className="rounded-[16px] border border-linea bg-superficie p-6 text-center">
+          <div className="tarjeta p-6 text-center">
             <Eye className="mx-auto h-8 w-8 text-tinta-tenue" aria-hidden="true" />
             <p className="mt-3 text-[1.1rem] font-semibold">Nadie ha visto tu historial todavía</p>
             <p className="mt-1 text-tinta-suave">Cuando compartas un código con un médico, aquí verás quién lo usó y cuándo.</p>
@@ -61,7 +61,7 @@ function FilaAcceso({ a }: { a: Acceso }) {
   const CentroIcono = /hospital/i.test(a.centro) ? Hospital : Building2;
   const mismoMomento = a.desde === a.hasta;
   return (
-    <li className={cn("rounded-[16px] border p-4 sm:p-5", emergencia ? "border-alerta/50 bg-alerta-fondo" : "border-linea bg-superficie")}>
+    <li className={cn("rounded-[12px] border p-4 sm:p-5", emergencia ? "border-alerta bg-alerta-fondo" : "border-linea bg-superficie")}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <p className="font-semibold">{a.quien}</p>
         <p className={cn("inline-flex items-center gap-1.5 text-[0.9rem] font-semibold", emergencia ? "text-alerta" : "text-tinta-suave")}>
