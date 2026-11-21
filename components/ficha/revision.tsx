@@ -36,8 +36,8 @@ export function Revision({
 
   return (
     <div className="pb-32">
-      <p className="text-[0.85rem] font-semibold uppercase tracking-[0.08em] text-primario">Paso 2 de 2 · Revisión</p>
-      <h1 className="mt-1 text-[1.9rem] font-semibold leading-tight sm:text-[2.2rem]">Revisa lo que se leyó</h1>
+      <p className="ceja">Paso 2 de 2 · Revisión</p>
+      <h1 className="mt-4 text-[1.9rem] font-semibold leading-tight sm:text-[2.2rem]">Revisa lo que se leyó</h1>
       <p className="mt-1.5 flex items-start gap-2 text-tinta-suave">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primario" />
         La IA solo transcribe. Nada se guarda hasta que tú confirmes.
@@ -220,7 +220,7 @@ function Coincidencia({ campos, eleccion, setEleccion }: { campos: EstadoCampo[]
         </span>
         <div className="min-w-0">
           <p className="font-bold text-primario-tinta">Este DPI ya tiene expediente</p>
-          <p className="mt-0.5 font-serif text-[1.15rem] font-semibold">{porDpi.nombre}</p>
+          <p className="mt-0.5 font-display text-[1.15rem] font-semibold">{porDpi.nombre}</p>
           <p className="text-[0.88rem] text-tinta-suave">
             {edadTexto(porDpi.fecha_nacimiento)} · {porDpi.comunidad} · {n} consultas
           </p>
@@ -269,7 +269,7 @@ function Coincidencia({ campos, eleccion, setEleccion }: { campos: EstadoCampo[]
 
 function OpcionPersona({ activo, onClick, titulo, detalle }: { activo: boolean; onClick: () => void; titulo: string; detalle: string }) {
   return (
-    <button type="button" role="radio" aria-checked={activo} onClick={onClick} className={cn("flex w-full items-center gap-3 rounded-[12px] border bg-superficie p-3 text-left", activo ? "border-primario shadow-[0_0_0_3px_rgba(15,94,90,.14)]" : "border-linea")}>
+    <button type="button" role="radio" aria-checked={activo} onClick={onClick} className={cn("flex w-full items-center gap-3 rounded-[12px] border bg-superficie p-3 text-left", activo ? "border-primario shadow-[0_0_0_3px_rgba(40,54,89,.14)]" : "border-linea")}>
       <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-full border-2", activo ? "border-primario bg-primario" : "border-linea-fuerte")}>{activo && <span className="h-2 w-2 rounded-full bg-white" />}</span>
       <span className="min-w-0">
         <span className="block font-semibold">{titulo}</span>

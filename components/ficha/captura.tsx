@@ -50,7 +50,8 @@ export function Captura({ fotos, setFotos, onLeer }: { fotos: Foto[]; setFotos: 
 
   return (
     <div className="pb-28">
-      <h1 className="text-[2rem] font-semibold leading-tight sm:text-[2.3rem]">Digitalizar ficha en papel</h1>
+      <p className="ceja">Paso 1 de 2 · Foto</p>
+      <h1 className="mt-4 text-[2rem] leading-tight sm:text-[2.3rem]">Digitalizar ficha en papel</h1>
       <p className="mt-2 text-tinta-suave">Toma una foto de la ficha completa. Si tiene varias páginas, agrega una foto por página.</p>
 
       <input
@@ -78,10 +79,10 @@ export function Captura({ fotos, setFotos, onLeer }: { fotos: Foto[]; setFotos: 
             transition={{ duration: 0.2 }}
             className="papel-kraft group mt-6 flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-[22px] border-2 border-dashed !border-kraft-borde p-6 text-center transition-colors hover:!border-primario/50 focus-within:outline-3 focus-within:outline-primario"
           >
-            <span className="grid h-20 w-20 place-items-center rounded-full bg-primario text-white shadow-[0_10px_24px_-10px_rgba(15,94,90,.8)] transition-transform duration-200 group-hover:scale-105">
+            <span className="grid h-20 w-20 place-items-center rounded-full bg-primario text-white shadow-[0_10px_24px_-10px_rgba(40,54,89,.8)] transition-transform duration-200 group-hover:scale-105">
               <Camera className="h-9 w-9" strokeWidth={1.75} />
             </span>
-            <span className="mt-5 font-serif text-[1.45rem] font-semibold text-tinta">Tomar foto de la ficha</span>
+            <span className="mt-5 font-display text-[1.45rem] font-semibold text-tinta">Tomar foto de la ficha</span>
             <span className="mt-1 text-kraft-tinta">o elegir una de la galería</span>
           </motion.label>
         ) : (

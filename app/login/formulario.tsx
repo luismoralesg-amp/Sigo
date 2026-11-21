@@ -46,7 +46,7 @@ export function FormularioEntrada() {
                 onClick={() => elegir(r)}
                 className={cn(
                   "flex w-full items-center gap-3.5 rounded-[16px] border bg-superficie p-3.5 text-left transition-all duration-200",
-                  activo ? "border-primario shadow-[0_0_0_3px_rgba(15,94,90,.14)]" : "border-linea hover:border-linea-fuerte"
+                  activo ? "border-primario shadow-[0_0_0_3px_rgba(40,54,89,.14)]" : "border-linea hover:border-linea-fuerte"
                 )}
               >
                 <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-[12px] transition-colors", activo ? "bg-primario text-white" : "bg-papel text-tinta-suave")}>

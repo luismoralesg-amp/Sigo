@@ -10,8 +10,8 @@ export const CENTROS: Record<string, Centro> = {
 };
 
 export const USUARIOS = {
-  puesto: { nombre: "Marta Pú", cargo: "Enfermera auxiliar", correo: "puesto@expedientevivo.test", centro: CENTROS.chuicaca },
-  hospital: { nombre: "Dr. Andrés Xicará", cargo: "Emergencias", correo: "hospital@expedientevivo.test", centro: CENTROS.hrq },
+  puesto: { nombre: "Marta Pú", cargo: "Enfermera auxiliar", correo: "puesto@sigo.test", centro: CENTROS.chuicaca },
+  hospital: { nombre: "Dr. Andrés Xicará", cargo: "Emergencias", correo: "hospital@sigo.test", centro: CENTROS.hrq },
 } as const;
 
 export const PACIENTES: Paciente[] = [

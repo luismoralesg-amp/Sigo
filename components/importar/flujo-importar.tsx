@@ -200,7 +200,8 @@ function Subir({ onArchivo, onEjemplo, error, cargando }: { onArchivo: (f: File)
   const [encima, setEncima] = useState(false);
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-[2rem] font-semibold leading-tight sm:text-[2.3rem]">Importar sistema antiguo</h1>
+      <p className="ceja">Paso 1 de 2 · Archivo</p>
+      <h1 className="mt-4 text-[2rem] leading-tight sm:text-[2.3rem]">Importar sistema antiguo</h1>
       <p className="mt-2 text-tinta-suave">Sube el archivo tal como sale del sistema del puesto. No hace falta arreglarlo antes.</p>
 
       <input ref={input} id="archivo-sistema" type="file" accept=".csv,.txt,.xlsx,.xls" className="sr-only" onChange={(e) => e.target.files?.[0] && onArchivo(e.target.files[0])} />
@@ -224,7 +225,7 @@ function Subir({ onArchivo, onEjemplo, error, cargando }: { onArchivo: (f: File)
         <span className="grid h-20 w-20 place-items-center rounded-[18px] bg-superficie text-kraft-tinta shadow-calida ring-1 ring-kraft-borde transition-transform duration-200 group-hover:-translate-y-0.5">
           {cargando ? <LoaderCircle className="h-9 w-9 animate-spin" /> : <Upload className="h-9 w-9" strokeWidth={1.75} />}
         </span>
-        <span className="mt-5 font-serif text-[1.45rem] font-semibold text-tinta">{cargando ? "Abriendo archivo…" : "Elegir archivo"}</span>
+        <span className="mt-5 font-display text-[1.45rem] font-semibold text-tinta">{cargando ? "Abriendo archivo…" : "Elegir archivo"}</span>
         <span className="mt-1 text-kraft-tinta">Excel (.xlsx, .xls) o CSV · también puedes arrastrarlo aquí</span>
       </label>
 
@@ -271,8 +272,8 @@ function Mapear({
 
   return (
     <div className="pb-32">
-      <p className="text-[0.85rem] font-semibold uppercase tracking-[0.08em] text-primario">Paso 2 de 2 · Mapear y limpiar</p>
-      <h1 className="mt-1 text-[1.9rem] font-semibold leading-tight sm:text-[2.2rem]">Revisa cómo se va a leer</h1>
+      <p className="ceja">Paso 2 de 2 · Mapear y limpiar</p>
+      <h1 className="mt-4 text-[1.9rem] font-semibold leading-tight sm:text-[2.2rem]">Revisa cómo se va a leer</h1>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Insignia tono="kraft"><FileSpreadsheet /> {archivo.nombre}</Insignia>
         <Insignia tono="neutro">{analisis.total} filas · {encabezados.length} columnas</Insignia>
@@ -286,7 +287,7 @@ function Mapear({
             <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[16px] bg-primario-suave text-primario">
               <FolderCheck className="h-7 w-7" />
             </span>
-            <p className="font-serif text-[1.5rem] font-semibold leading-snug sm:text-[1.75rem]">
+            <p className="font-display text-[1.5rem] font-semibold leading-snug sm:text-[1.75rem]">
               <span className="num text-primario">{analisis.validas}</span> consultas de <span className="num text-primario">{analisis.pacientes}</span> pacientes listas para rescatar
             </p>
           </div>
@@ -481,7 +482,7 @@ function Listo({ analisis, archivo }: { analisis: Analisis; archivo: string }) {
       <Tarjeta className="mt-8 divide-y divide-linea">
         {analisis.porPaciente.slice(0, 6).map((p, i) => (
           <motion.div key={p.nombre + i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.06 }} className="flex items-center gap-3 p-4">
-            <span className="papel-kraft grid h-11 w-11 shrink-0 place-items-center rounded-[10px] font-serif text-[1rem] font-semibold text-kraft-tinta">+{p.consultas}</span>
+            <span className="papel-kraft grid h-11 w-11 shrink-0 place-items-center rounded-[10px] font-display text-[1rem] font-semibold text-kraft-tinta">+{p.consultas}</span>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{p.nombre}</p>
               <p className="num truncate font-mono text-[0.8rem] text-tinta-tenue">{p.dpi ? formatearDPI(p.dpi) : "Unido por nombre y fecha de nacimiento"}</p>

@@ -24,7 +24,7 @@ export function LineaTiempo({ consultas }: { consultas: Consulta[] }) {
           return (
             <li key={c.id} className="relative pl-11 sm:pl-14">
               {nuevoAño && (
-                <p className="num relative -ml-11 mb-3 mt-2 flex items-center gap-3 font-serif text-[1.15rem] font-semibold text-tinta-suave sm:-ml-14">
+                <p className="num relative -ml-11 mb-3 mt-2 flex items-center gap-3 font-display text-[1.15rem] font-semibold text-tinta-suave sm:-ml-14">
                   <span className="grid h-8 w-8 place-items-center rounded-full border border-linea-fuerte bg-papel text-[0.72rem] font-sans font-bold sm:h-10 sm:w-10 sm:text-[0.8rem]">{año.slice(2)}</span>
                   {año}
                 </p>
@@ -58,7 +58,7 @@ function TarjetaConsulta({ c, onAbrir }: { c: Consulta; onAbrir: () => void }) {
       <div className="flex gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <time dateTime={c.fecha} className="num font-serif text-[1.2rem] font-semibold">{fechaCorta(c.fecha)}</time>
+            <time dateTime={c.fecha} className="num font-display text-[1.2rem] font-semibold">{fechaCorta(c.fecha)}</time>
             <InsigniaFuente c={c} />
           </div>
           {centro && (
@@ -129,7 +129,7 @@ function VisorOriginal({ consulta: c, onCerrar }: { consulta: Consulta | null; o
         {c && (
           <>
             <div className="pr-12">
-              <DialogoTitulo className="font-serif text-[1.4rem] font-semibold">Original · {fechaCorta(c.fecha)}</DialogoTitulo>
+              <DialogoTitulo className="font-display text-[1.4rem] font-semibold">Original · {fechaCorta(c.fecha)}</DialogoTitulo>
               <DialogoDescripcion className="mt-1 text-tinta-suave">
                 {c.origen === "foto" ? "Foto de la ficha en papel, tal como se rescató." : `Fila tal como venía en ${ARCHIVO_SISTEMA}. El sistema original no se modificó.`}
               </DialogoDescripcion>

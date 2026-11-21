@@ -1,30 +1,30 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------
-   Expediente Vivo · tokens de diseño
-   Concepto: "papel que cobra vida". Lo que viene del pasado es kraft;
-   lo confirmado y digital es blanco y limpio.
+   SIGO · tokens de diseño — "Tu historia te sigue."
+   Marino + crema + cobre. Lo que viene del pasado (papel, sistemas
+   antiguos) lleva el tono cobre; lo confirmado y digital es limpio.
 ------------------------------------------------------------------- */
 :root {
   color-scheme: light;
 
-  --papel: #faf7f2;          /* fondo blanco hueso */
-  --superficie: #ffffff;
-  --tinta: #1c2333;          /* texto principal */
-  --tinta-suave: #4a5266;    /* texto secundario (AA sobre papel) */
-  --tinta-tenue: #6b7180;    /* ayudas (AA sobre blanco) */
-  --linea: #e7e1d6;          /* bordes cálidos */
-  --linea-fuerte: #d6cdbd;
+  --papel: #eeeae5;          /* crema SIGO */
+  --superficie: #fbf9f6;
+  --tinta: #1f2b47;          /* marino tinta */
+  --tinta-suave: #4b5570;    /* texto secundario (AA sobre crema) */
+  --tinta-tenue: #636b80;    /* ayudas (AA sobre blanco) */
+  --linea: #e2dcd5;          /* bordes cálidos */
+  --linea-fuerte: #cfc6bb;
 
-  --primario: #0f5e5a;
-  --primario-hover: #0b4b48;
-  --primario-suave: #e3efed;
-  --primario-tinta: #0a3f3c;
+  --primario: #283659;       /* marino SIGO */
+  --primario-hover: #1d2846;
+  --primario-suave: #e3e6ee;
+  --primario-tinta: #1d2846;
 
-  --kraft: #e9dcc3;
-  --kraft-claro: #f4ecdc;
-  --kraft-borde: #cdbb97;
-  --kraft-tinta: #5e4a2b;    /* texto sobre kraft, AA */
+  --kraft: #ecd9c5;          /* cobre claro: lo rescatado */
+  --kraft-claro: #f5ebe0;
+  --kraft-borde: #cc9c70;    /* cobre SIGO */
+  --kraft-tinta: #7a4b22;    /* café cobre, AA sobre crema */
 
   --revisar: #f5c542;
   --revisar-fondo: #fdf5dc;
@@ -37,7 +37,7 @@
   --confirmado: #2e7d4f;
   --confirmado-fondo: #e6f2ea;
 
-  --sombra-calida: 0 1px 2px rgba(92, 64, 28, 0.06), 0 4px 14px rgba(92, 64, 28, 0.07);
+  --sombra-calida: 0 1px 2px rgba(40, 54, 89, 0.05), 0 4px 14px rgba(92, 64, 28, 0.07);
   --sombra-calida-lg: 0 2px 6px rgba(92, 64, 28, 0.07), 0 18px 40px -12px rgba(92, 64, 28, 0.18);
 
   /* grano de papel (SVG feTurbulence) */
@@ -69,8 +69,9 @@
   --color-confirmado: var(--confirmado);
   --color-confirmado-fondo: var(--confirmado-fondo);
 
-  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-sans: var(--font-dmsans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-spartan), "League Spartan", ui-sans-serif, sans-serif;
+  --font-marca: var(--font-poppins), ui-sans-serif, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, Menlo, monospace;
   --font-mano: var(--font-caveat), "Bradley Hand", cursive;
 
@@ -93,17 +94,17 @@ html {
 body {
   background: var(--papel);
   color: var(--tinta);
-  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-dmsans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 @layer base {
-  h1, h2, h3, .font-serif {
-    font-family: var(--font-fraunces), ui-serif, Georgia, serif;
-    font-optical-sizing: auto;
-    letter-spacing: -0.01em;
+  h1, h2, h3, .font-display {
+    font-family: var(--font-spartan), ui-sans-serif, sans-serif;
+    letter-spacing: -0.015em;
   }
+  h1 { font-weight: 700; }
 }
 
 /* números tabulares para fechas y DPI */
@@ -116,14 +117,14 @@ body {
   border-radius: 6px;
 }
 
-::selection { background: #cfe5e2; color: var(--tinta); }
+::selection { background: #ecd9c5; color: var(--tinta); }
 
 @layer components {
 /* ---------- Superficies "del pasado" ---------- */
 .papel-kraft {
   background-color: var(--kraft-claro);
-  background-image: var(--grano), linear-gradient(180deg, #f6efe1 0%, var(--kraft-claro) 100%);
-  border: 1px solid var(--kraft-borde);
+  background-image: var(--grano), linear-gradient(180deg, #f8f0e7 0%, var(--kraft-claro) 100%);
+  border: 1px solid #dfc3a6;
 }
 .papel-kraft-fuerte {
   background-color: var(--kraft);
@@ -139,7 +140,7 @@ body {
   right: -1px;
   width: 22px;
   height: 22px;
-  background: linear-gradient(225deg, var(--papel) 50%, #dccaa6 50%, #e9dcc3 100%);
+  background: linear-gradient(225deg, var(--papel) 50%, #dcb58f 50%, #ecd9c5 100%);
   border-bottom-left-radius: 6px;
   box-shadow: -1px 1px 2px rgba(92, 64, 28, 0.12);
 }
@@ -165,4 +166,27 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---------- Detalles de marca SIGO ---------- */
+@layer components {
+  /* etiqueta superior: MAYÚSCULAS espaciadas + barra cobre, como en el deck */
+  .ceja {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--kraft-tinta);
+  }
+  .ceja::after {
+    content: "";
+    width: 2.6rem;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--kraft-borde);
+  }
+  .ceja-clara { color: #e3bd96; }
 }

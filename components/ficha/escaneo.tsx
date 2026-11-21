@@ -44,11 +44,11 @@ export function Escaneo({ foto, lectura, onTerminar }: { foto: string; lectura: 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={foto} alt="Ficha que se está leyendo" className="max-h-[34dvh] w-full object-contain lg:max-h-[72dvh]" />
         {/* velo que se ilumina detrás de la línea */}
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(15,94,90,.0),rgba(15,94,90,.10))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(40,54,89,.0),rgba(40,54,89,.10))]" />
         {!lectura || visibles < DEFINICION.length ? (
           <div className="pointer-events-none absolute inset-x-0 h-[14%] [animation:barrido_2.1s_cubic-bezier(.45,0,.55,1)_infinite_alternate]">
-            <div className="h-full bg-[linear-gradient(180deg,rgba(94,234,212,0)_0%,rgba(94,234,212,.28)_88%,rgba(94,234,212,.0)_100%)]" />
-            <div className="absolute inset-x-0 bottom-[12%] h-[2px] bg-[#5eead4] shadow-[0_0_14px_3px_rgba(94,234,212,.75)]" />
+            <div className="h-full bg-[linear-gradient(180deg,rgba(232,185,140,0)_0%,rgba(232,185,140,.28)_88%,rgba(232,185,140,.0)_100%)]" />
+            <div className="absolute inset-x-0 bottom-[12%] h-[2px] bg-[#e8b98c] shadow-[0_0_14px_3px_rgba(232,185,140,.75)]" />
           </div>
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 grid place-items-center bg-primario/25">
@@ -60,8 +60,8 @@ export function Escaneo({ foto, lectura, onTerminar }: { foto: string; lectura: 
       </div>
 
       <div>
-        <p className="text-[0.85rem] font-semibold uppercase tracking-[0.08em] text-primario">Lectura en curso</p>
-        <h1 className="mt-1 text-[1.9rem] font-semibold leading-tight">{lectura ? "Lectura lista" : "Leyendo la ficha…"}</h1>
+        <p className="ceja">Lectura en curso</p>
+        <h1 className="mt-4 text-[1.9rem] font-semibold leading-tight">{lectura ? "Lectura lista" : "Leyendo la ficha…"}</h1>
         <p className="mt-1.5 text-tinta-suave" aria-live="polite">
           {lectura ? "Ahora revisa lo que se leyó antes de guardar." : MENSAJES[msg]}
         </p>

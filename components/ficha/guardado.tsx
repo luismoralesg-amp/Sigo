@@ -26,8 +26,8 @@ export function Guardado({ foto, nombre, fecha, alergias, onOtra }: { foto: stri
           <img src={foto} alt="" className="h-full w-full rounded-[5px] object-cover" />
         </motion.div>
         {/* frente del fólder */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="absolute bottom-0 left-1/2 h-28 w-56 -translate-x-1/2 rounded-[14px] bg-primario shadow-[0_18px_30px_-14px_rgba(15,94,90,.8)]">
-          <span className="absolute bottom-3 left-4 font-serif text-[0.95rem] font-semibold text-white/90">Expediente</span>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="absolute bottom-0 left-1/2 h-28 w-56 -translate-x-1/2 rounded-[14px] bg-primario shadow-[0_18px_30px_-14px_rgba(40,54,89,.8)]">
+          <span className="absolute bottom-3 left-4 font-display text-[0.95rem] font-semibold text-white/90">Expediente</span>
         </motion.div>
         {/* sello de confirmado */}
         <motion.span

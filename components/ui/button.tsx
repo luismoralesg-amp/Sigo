@@ -8,7 +8,7 @@ const botonVariantes = cva(
   {
     variants: {
       variante: {
-        primario: "bg-primario text-white shadow-[0_1px_0_rgba(255,255,255,.15)_inset,0_6px_16px_-6px_rgba(15,94,90,.55)] hover:bg-primario-hover",
+        primario: "bg-primario text-white shadow-[0_1px_0_rgba(255,255,255,.15)_inset,0_6px_16px_-6px_rgba(40,54,89,.55)] hover:bg-primario-hover",
         secundario: "border border-linea-fuerte bg-superficie text-tinta shadow-calida hover:border-primario/40 hover:bg-primario-suave/50",
         fantasma: "text-primario hover:bg-primario-suave",
         kraft: "papel-kraft text-kraft-tinta hover:brightness-[.98]",

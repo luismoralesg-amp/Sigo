@@ -15,7 +15,8 @@ export default function PaginaHospital() {
   return (
     <Shell rol="hospital">
       <div className="mx-auto max-w-xl pt-4 text-center sm:pt-12">
-        <h1 className="text-[2.1rem] font-semibold leading-tight sm:text-[2.6rem]">Buscar expediente</h1>
+        <p className="ceja items-center">Tu historia te sigue</p>
+        <h1 className="mt-4 text-[2.3rem] leading-[1.05] text-primario sm:text-[2.9rem]">Buscar expediente</h1>
         <p className="mt-2 text-tinta-suave">Escribe el DPI o CUI del paciente. Verás su historial de todos los centros, incluido lo rescatado de papel.</p>
         <BuscadorDPI />
       </div>
