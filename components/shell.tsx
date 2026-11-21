@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Hospital, LogOut } from "lucide-react";
+import { Building2, Hospital, LogOut, ChartColumn } from "lucide-react";
 import { Logo } from "@/components/marca/logo";
 import { USUARIOS } from "@/datos/demo";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,16 @@ export function Shell({ rol, children, ancho = "normal" }: { rol: "puesto" | "ho
                 <span className="block truncate text-[0.74rem] text-tinta-tenue">{u.nombre} · {u.cargo}</span>
               </span>
             </div>
+            {rol === "hospital" && (
+              <Link href="/tablero" className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 text-[0.9rem] font-semibold text-tinta-suave transition-colors hover:bg-papel hover:text-tinta sm:inline-flex">
+                <ChartColumn className="h-5 w-5" /> Tablero
+              </Link>
+            )}
+            {rol === "hospital" && (
+              <Link href="/tablero" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-tinta-suave hover:bg-papel sm:hidden" aria-label="Tablero">
+                <ChartColumn className="h-5 w-5" />
+              </Link>
+            )}
             <Link href="/login" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-tinta-suave transition-colors hover:bg-papel hover:text-tinta" aria-label="Salir">
               <LogOut className="h-5 w-5" />
             </Link>

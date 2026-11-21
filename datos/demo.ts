@@ -158,3 +158,15 @@ export const RECIENTES_PUESTO = [
   { nombre: "Registro del puesto 2015–2022", detalle: "312 consultas · Excel", origen: "sistema_antiguo" as const, hora: "09:58" },
   { nombre: "Mateo Batz Tzul", detalle: "Carné de vacunas · 2024", origen: "foto" as const, hora: "09:15" },
 ];
+
+/** Fichas rescatadas por municipio (demo). Totonicapán coincide con el contador del puesto. */
+export const RESCATE_MUNICIPIOS = [
+  { municipio: "Quetzaltenango", departamento: "Quetzaltenango", papel: 380, sistema: 1930, centros: 4 },
+  { municipio: "Totonicapán", departamento: "Totonicapán", papel: 412, sistema: 875, centros: 3 },
+  { municipio: "Momostenango", departamento: "Totonicapán", papel: 520, sistema: 606, centros: 2 },
+  { municipio: "San Cristóbal Totonicapán", departamento: "Totonicapán", papel: 310, sistema: 630, centros: 2 },
+  { municipio: "San Francisco El Alto", departamento: "Totonicapán", papel: 402, sistema: 286, centros: 1 },
+  { municipio: "Salcajá", departamento: "Quetzaltenango", papel: 130, sistema: 382, centros: 1 },
+  { municipio: "Santa María Chiquimula", departamento: "Totonicapán", papel: 455, sistema: 0, centros: 1 },
+  { municipio: "Cantel", departamento: "Quetzaltenango", papel: 238, sistema: 0, centros: 1 },
+];
