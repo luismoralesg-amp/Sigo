@@ -26,7 +26,7 @@ def test_ficha_ilegible_responde_422(cliente):
         files=[("imagenes", ("vacia.jpg", b"", "image/jpeg"))],
     )
     assert_error(vacia, 422, "ilegible")
-    assert not any(f["client_id"].startswith("aaaa") or f["client_id"].startswith("bbbb") for f in almacen.fichas.values())
+    assert not any((f.get("client_id") or "").startswith(("aaaa", "bbbb")) for f in almacen.fichas.values())
 
 
 def test_importaciones_forma_y_reglas(cliente):
@@ -36,7 +36,7 @@ def test_importaciones_forma_y_reglas(cliente):
         headers=auth(enfermera),
         files={"archivo": ("pacientes.csv", CSV, "text/csv")},
     )
-    assert r.status_code == 200, r.text
+    assert r.status_code == 201, r.text
     cuerpo = r.json()
     assert set(cuerpo) == {"importacion_id", "total_filas", "creados", "actualizados", "con_errores", "filas"}
     assert cuerpo["total_filas"] == 3
@@ -89,7 +89,7 @@ def test_formato_no_soportado_y_access_pide_mdbtools(cliente):
     )
     assert_error(access, 503, "ia_no_disponible")
     assert "mdbtools" in access.json()["error"]["mensaje"]
-    paciente = cliente.post("/api/v1/auth/paciente", json={"dpi": "2547896330801", "pin": "4821"}).json()["token"]
+    paciente = cliente.post("/api/v1/auth/paciente", json={"dpi": "2547896330801", "pin": "482193"}).json()["token"]
     exportar = cliente.get("/api/v1/pacientes/p_12/exportar", headers=auth(paciente), params={"formato": "zzz"})
     assert_error(exportar, 400, "formato_no_soportado")
     txt = cliente.get("/api/v1/pacientes/p_12/exportar", headers=auth(paciente), params={"formato": "txt"})

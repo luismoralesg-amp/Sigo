@@ -39,8 +39,9 @@ PERSONAL: dict[str, dict[str, Any]] = {
     "u_02": {"id": "u_02", "nombre": "Dr. Mario Xicará", "rol": "medico", "centro_id": "c_02", "correo": "mario.xicara@sigo.demo"},
 }
 
-PIN_ROSA = "4821"
-PIN_MATEO = "2580"
+PIN_ROSA = "482193"
+# Semilla de 6 dígitos, igual que el PIN de Rosa. El valor anterior (2580) ya no entra.
+PIN_MATEO = "258036"
 # El ejemplo de Phil (2547896310801) no pasa el dígito verificador: módulo 11 da 3.
 # Este CUI es inventado, mismo correlativo y municipio, con el dígito correcto.
 DPI_ROSA = "2547896330801"

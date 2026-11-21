@@ -90,6 +90,17 @@
       },
       "AltaPaciente": {
         "properties": {
+          "advertencias": {
+            "items": {
+              "enum": [
+                "dpi_dudoso",
+                "posible_duplicado"
+              ],
+              "type": "string"
+            },
+            "title": "Advertencias",
+            "type": "array"
+          },
           "paciente": {
             "$ref": "#/components/schemas/Paciente"
           },
@@ -100,7 +111,8 @@
         },
         "required": [
           "paciente",
-          "pin_inicial"
+          "pin_inicial",
+          "advertencias"
         ],
         "title": "AltaPaciente",
         "type": "object"
@@ -649,7 +661,9 @@
             "enum": [
               "validacion",
               "dpi_invalido",
+              "identificador_invalido",
               "sin_consentimiento",
+              "motivo_requerido",
               "formato_no_soportado",
               "sin_sesion",
               "pin_incorrecto",
@@ -662,6 +676,7 @@
               "codigo_ya_usado",
               "codigo_vencido",
               "imagen_muy_grande",
+              "archivo_muy_grande",
               "ilegible",
               "demasiados_intentos",
               "ia_no_disponible"
@@ -746,10 +761,18 @@
         "type": "object"
       },
       "Ficha": {
+        "description": "v3 suma origen, importacion_id y originales. imagenes se conserva.",
         "properties": {
           "client_id": {
-            "title": "Client Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
           },
           "creada_en": {
             "title": "Creada En",
@@ -798,6 +821,32 @@
             "title": "Imagenes",
             "type": "array"
           },
+          "importacion_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Importacion Id"
+          },
+          "origen": {
+            "enum": [
+              "foto",
+              "importacion"
+            ],
+            "title": "Origen",
+            "type": "string"
+          },
+          "originales": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Originales",
+            "type": "array"
+          },
           "paciente_id": {
             "title": "Paciente Id",
             "type": "string"
@@ -806,8 +855,9 @@
         "required": [
           "id",
           "paciente_id",
-          "client_id",
+          "origen",
           "estado",
+          "originales",
           "imagenes",
           "extraccion",
           "error",
@@ -958,6 +1008,22 @@
           "accesos"
         ],
         "title": "ListaAccesos",
+        "type": "object"
+      },
+      "ListaFichas": {
+        "properties": {
+          "fichas": {
+            "items": {
+              "$ref": "#/components/schemas/Ficha"
+            },
+            "title": "Fichas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fichas"
+        ],
+        "title": "ListaFichas",
         "type": "object"
       },
       "ListaVersiones": {
@@ -1481,7 +1547,7 @@
     }
   },
   "info": {
-    "description": "Contrato v1 de Phil. URL base: /api/v1 (local: http://localhost:8000/api/v1; el mismo camino detrás del túnel). 18 endpoints más POST /importaciones. Nada se borra. La IA no guarda sola. OpenAPI generado: contrato/openapi-v1.json. formato_no_soportado es un 400 propio (no se reescribe como validacion).",
+    "description": "Contrato v3 servido bajo /api/v1, sumado al de Phil. El host (http://localhost:8000 o https://<host>.trycloudflare.com) no incluye /api/v1: el cliente arma ${NEXT_PUBLIC_API_URL}/api/v1. GET /fichas filtra por estado e importacion_id. Ficha suma originales, origen e importacion_id y conserva imagenes. POST /pacientes devuelve advertencias. El PIN tiene 6 dígitos. Nada se borra. La IA no guarda sola. OpenAPI generado: contrato/openapi-v1.json. formato_no_soportado es un 400 propio (no se reescribe como validacion).",
     "summary": "Tu historia te sigue.",
     "title": "SIGO API",
     "version": "1.0.0"
@@ -2480,6 +2546,174 @@
         "summary": "Emergencia"
       }
     },
+    "/api/v1/fichas": {
+      "get": {
+        "operationId": "listar_fichas_api_v1_fichas_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "estado",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "in": "query",
+            "name": "importacion_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Importacion Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaFichas"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResp"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Listar Fichas"
+      }
+    },
     "/api/v1/fichas/{id}": {
       "get": {
         "operationId": "obtener_ficha_api_v1_fichas__id__get",
@@ -2812,7 +3046,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {

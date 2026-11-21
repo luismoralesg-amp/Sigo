@@ -9,7 +9,9 @@ from pydantic import BaseModel, ConfigDict
 CodigoError = Literal[
     "validacion",
     "dpi_invalido",
+    "identificador_invalido",
     "sin_consentimiento",
+    "motivo_requerido",
     "formato_no_soportado",
     "sin_sesion",
     "pin_incorrecto",
@@ -22,6 +24,7 @@ CodigoError = Literal[
     "codigo_ya_usado",
     "codigo_vencido",
     "imagen_muy_grande",
+    "archivo_muy_grande",
     "ilegible",
     "demasiados_intentos",
     "ia_no_disponible",
@@ -95,14 +98,23 @@ class Expediente(BaseModel):
 
 
 class Ficha(BaseModel):
+    """v3 suma origen, importacion_id y originales. imagenes se conserva."""
+
     id: str
     paciente_id: str
-    client_id: str
+    origen: Literal["foto", "importacion"]
+    importacion_id: str | None = None
+    client_id: str | None = None
     estado: Literal["procesando", "lista", "confirmada", "error"]
+    originales: list[str]
     imagenes: list[str]
     extraccion: dict | None
     error: str | None
     creada_en: str
+
+
+class ListaFichas(BaseModel):
+    fichas: list[Ficha]
 
 
 class CodigoTemporal(BaseModel):
@@ -137,6 +149,10 @@ class Confirmacion(BaseModel):
 class AltaPaciente(BaseModel):
     paciente: Paciente
     pin_inicial: str
+    # dpi_dudoso: dígito o municipio que no cuadran (se crea igual).
+    # posible_duplicado: mismo nombre y la fecha no contradice a alguien ya cargado.
+    # Un TMP- no agrega advertencia (v3).
+    advertencias: list[Literal["dpi_dudoso", "posible_duplicado"]]
 
 
 class Busqueda(BaseModel):

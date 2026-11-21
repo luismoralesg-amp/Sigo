@@ -13,6 +13,20 @@ La IA solo transcribe: nunca guarda sola. La foto o el archivo original queda ju
 
 Proyecto para el Track 03 “Legacy”: conectar un sistema antiguo con tecnología actual **sin reemplazarlo**.
 
+## Contra el backend real
+
+`NEXT_PUBLIC_API_URL` es el host, **sin** `/api/v1`. El cliente (`lib/api/cliente.ts`) arma `${NEXT_PUBLIC_API_URL}/api/v1`.
+
+```bash
+# frontend/.env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+# Túnel: NEXT_PUBLIC_API_URL=https://<host>.trycloudflare.com
+```
+
+Con esa variable puesta y sin `NEXT_PUBLIC_SIGO_MOCKS=1`, la app habla con el backend. Si la variable está vacía, o `NEXT_PUBLIC_SIGO_MOCKS=1`, usa los mocks.
+
+Doña Rosa (inventada): DPI `2547896330801`, PIN de 6 dígitos `482193`. El PIN de 4 dígitos no entra.
+
 ---
 
 ## Estado actual

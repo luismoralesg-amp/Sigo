@@ -12,6 +12,7 @@ En esta carpeta conviven dos descripciones. Este merge no eligió una.
 
   Un test del backend falla si el archivo no coincide con el esquema generado. Las frases de status (`Content Too Large` / `Request Entity Too Large`) no entran en la comparación.
 - **URL base que implementa el backend:** `/api/v1` (local: `http://localhost:8000/api/v1`).
+- **`NEXT_PUBLIC_API_URL` va sin `/api/v1`.** Solo el host: `http://localhost:8000` o `https://<host>.trycloudflare.com`. El cliente (`frontend/lib/api/cliente.ts`) concatena `/api/v1`. Si la variable ya trae ese sufijo, la ruta se duplica.
 
 ## Frontend (v3)
 

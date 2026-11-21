@@ -25,6 +25,7 @@ from .modelos import (
     Expediente,
     Ficha,
     Importacion,
+    ListaFichas,
     ListaAccesos,
     ListaVersiones,
     Paciente,
@@ -79,6 +80,15 @@ async def subir_ficha(
             raise error(413, "imagen_muy_grande", "Una foto pasa de 5 MB. Comprimila y reintentá.")
         blobs.append(data)
     return servicio.subir_ficha(usuario, id, client_id, capturada_en, blobs)
+
+
+@router.get("/fichas", response_model=ListaFichas)
+def listar_fichas(
+    usuario: UsuarioDep,
+    estado: str | None = Query(None),
+    importacion_id: str | None = Query(None),
+) -> dict:
+    return servicio.listar_fichas(usuario, estado, importacion_id)
 
 
 @router.get("/fichas/{id}", response_model=Ficha)
@@ -158,7 +168,7 @@ def emergencia(body: EmergenciaIn, usuario: UsuarioDep) -> dict:
     return servicio.emergencia(usuario, body.dpi, body.motivo)
 
 
-@router.post("/importaciones", response_model=Importacion)
+@router.post("/importaciones", response_model=Importacion, status_code=201)
 async def importaciones(
     usuario: UsuarioDep,
     archivo: UploadFile = File(...),

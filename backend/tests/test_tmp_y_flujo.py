@@ -21,6 +21,7 @@ def test_sin_dpi_asigna_tmp(cliente):
     assert TMP.fullmatch(dpi)
     assert dpi.startswith(f"TMP-{tiempo.ahora():%Y%m%d}-")
     assert re.fullmatch(r"\d{6}", r.json()["pin_inicial"])
+    assert r.json()["advertencias"] == []
     assert r.json()["paciente"]["version"] == 1
     otro = cliente.post("/api/v1/pacientes", headers=auth(enfermera), json={"nombre": "Tomás Inventado"}).json()
     assert otro["paciente"]["dpi"] != dpi
@@ -48,7 +49,9 @@ def test_codigo_de_un_solo_uso_y_pin(cliente, monkeypatch):
     token = paciente.json()["token"]
     me = cliente.get("/api/v1/me", headers=auth(token)).json()
     assert me["debe_cambiar_pin"] is True
-    pin = cliente.put("/api/v1/me/pin", headers=auth(token), json={"pin_actual": PIN_MATEO, "pin_nuevo": "90341"})
+    corto = cliente.put("/api/v1/me/pin", headers=auth(token), json={"pin_actual": PIN_MATEO, "pin_nuevo": "90341"})
+    assert_error(corto, 400, "validacion")
+    pin = cliente.put("/api/v1/me/pin", headers=auth(token), json={"pin_actual": PIN_MATEO, "pin_nuevo": "903417"})
     assert pin.status_code == 204
     assert cliente.get("/api/v1/me", headers=auth(token)).json()["debe_cambiar_pin"] is False
 
@@ -79,7 +82,7 @@ def test_emergencia_solo_muestra_alertas(cliente):
         headers=auth(medico),
         json={"dpi": DPI_ROSA, "motivo": "corto"},
     )
-    assert_error(corto, 400, "validacion")
+    assert_error(corto, 400, "motivo_requerido")
     r = cliente.post(
         "/api/v1/emergencia",
         headers=auth(medico),
@@ -92,7 +95,7 @@ def test_emergencia_solo_muestra_alertas(cliente):
     assert expediente["consultas"] == []
     assert expediente["tipo_acceso"] == "emergencia"
     assert "penicilina" in expediente["alertas"]["alergias"]
-    paciente = cliente.post("/api/v1/auth/paciente", json={"dpi": DPI_ROSA, "pin": "4821"}).json()["token"]
+    paciente = cliente.post("/api/v1/auth/paciente", json={"dpi": DPI_ROSA, "pin": "482193"}).json()["token"]
     accesos = cliente.get("/api/v1/pacientes/p_12/accesos", headers=auth(paciente)).json()["accesos"]
     assert accesos[0]["tipo"] == "emergencia"
     assert "inconsciente" in accesos[0]["motivo"]

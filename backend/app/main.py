@@ -19,9 +19,12 @@ def crear_app() -> FastAPI:
         version="1.0.0",
         summary="Tu historia te sigue.",
         description=(
-            "Contrato v1 de Phil. URL base: /api/v1 "
-            "(local: http://localhost:8000/api/v1; el mismo camino detrás del túnel). "
-            "18 endpoints más POST /importaciones. "
+            "Contrato v3 servido bajo /api/v1, sumado al de Phil. "
+            "El host (http://localhost:8000 o https://<host>.trycloudflare.com) no incluye /api/v1: "
+            "el cliente arma ${NEXT_PUBLIC_API_URL}/api/v1. "
+            "GET /fichas filtra por estado e importacion_id. "
+            "Ficha suma originales, origen e importacion_id y conserva imagenes. "
+            "POST /pacientes devuelve advertencias. El PIN tiene 6 dígitos. "
             "Nada se borra. La IA no guarda sola. "
             "OpenAPI generado: contrato/openapi-v1.json. "
             "formato_no_soportado es un 400 propio (no se reescribe como validacion)."
