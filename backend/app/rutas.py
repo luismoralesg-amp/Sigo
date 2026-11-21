@@ -55,8 +55,8 @@ def auth_paciente(body: AuthPacienteIn) -> dict:
 
 
 @router.get("/pacientes/buscar", response_model=Busqueda)
-def buscar(usuario: UsuarioDep, dpi: str = Query("")) -> dict:
-    return servicio.buscar(usuario, dpi)
+def buscar(usuario: UsuarioDep, dpi: str = Query(""), emergencia: bool = Query(False)) -> dict:
+    return servicio.buscar(usuario, dpi, emergencia)
 
 
 @router.post("/pacientes", response_model=AltaPaciente, status_code=201)

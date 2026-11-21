@@ -80,6 +80,52 @@ def _actor(usuario: dict) -> dict:
     return {"id": usuario["id"], "nombre": usuario["nombre"], "centro_id": usuario.get("centro_id")}
 
 
+def _centro_usuario(usuario: dict) -> str | None:
+    if usuario.get("centro_id"):
+        return usuario["centro_id"]
+    centro = usuario.get("centro") or {}
+    return centro.get("id")
+
+
+def enfermera_alcanza(usuario: dict, paciente_id: str) -> bool:
+    """S-09. Lo más chico que no rompe el demo ni el contrato de Phil.
+
+    La enfermera ve el expediente completo (Phil: para corregir) solo si el
+    paciente es de su puesto, si tiene una consulta en ese puesto, o si ella
+    misma lo atendió (editada_por). El código temporal del médico no abre
+    este alcance: ese consentimiento es de otro rol.
+    """
+    if usuario.get("rol") != "enfermera":
+        return False
+    centro = _centro_usuario(usuario)
+    nombre = (usuario.get("nombre") or "").strip()
+    meta = almacen.pacientes_meta.get(paciente_id) or {}
+    if centro and meta.get("centro_id") == centro:
+        return True
+    for consulta in almacen.consultas_de(paciente_id):
+        if centro and (consulta.get("centro") or {}).get("id") == centro:
+            return True
+        if nombre and consulta.get("editada_por") == nombre:
+            return True
+    return False
+
+
+def exigir_centro_enfermera(usuario: dict, paciente_id: str) -> None:
+    if usuario.get("rol") != "enfermera":
+        return
+    if enfermera_alcanza(usuario, paciente_id):
+        return
+    almacen.anotar_bitacora(
+        {
+            "tipo": "acceso_denegado",
+            "actor_id": usuario["id"],
+            "paciente_id": paciente_id,
+            "rol": "enfermera",
+        }
+    )
+    raise error(403, "rol_no_permitido", "Este expediente no es de tu centro.")
+
+
 def clave_pin(dpi: str) -> str:
     texto = (dpi or "").strip()
     if es_identificador_temporal(texto):
@@ -175,7 +221,56 @@ def autenticar_paciente(dpi: str, pin: str) -> dict:
     return {"token": token, "vence_en": tiempo.iso(vence), "paciente_id": paciente["id"]}
 
 
-def buscar(usuario: dict, dpi: str) -> dict:
+def _emergencia_vigente_de(paciente_id: str) -> dict | None:
+    """Acceso abierto con POST /emergencia que todavía no vence. El query no basta."""
+    momento = tiempo.ahora()
+    vigentes = [
+        a
+        for a in almacen.accesos
+        if a["paciente_id"] == paciente_id and a["tipo"] == "emergencia" and a["hasta"] > momento
+    ]
+    if not vigentes:
+        return None
+    return max(vigentes, key=lambda a: a["hasta"])
+
+
+def _registrar_lectura_emergencia(usuario: dict, paciente_id: str, motivo: str | None) -> None:
+    momento = tiempo.ahora()
+    almacen.registrar_acceso(
+        paciente_id=paciente_id,
+        actor=_actor(usuario),
+        tipo="emergencia",
+        motivo=motivo,
+        desde=momento,
+        hasta=momento,
+    )
+    almacen.anotar_bitacora(
+        {
+            "tipo": "lectura_emergencia",
+            "actor_id": usuario["id"],
+            "paciente_id": paciente_id,
+            "rol": "enfermera",
+        }
+    )
+
+
+def _paciente_de_busqueda(usuario: dict, paciente: dict, emergencia: bool) -> dict:
+    """Misma forma de Paciente.
+
+    S-09 devuelve las alertas completas. ?emergencia=true solo las devuelve si
+    hay un acceso de emergencia vigente para ese paciente. Si no, van vacías.
+    """
+    if enfermera_alcanza(usuario, paciente["id"]):
+        return paciente
+    if emergencia and _emergencia_vigente_de(paciente["id"]):
+        return paciente
+    visible = dict(paciente)
+    visible["alergias"] = []
+    visible["condiciones_cronicas"] = []
+    return visible
+
+
+def buscar(usuario: dict, dpi: str, emergencia: bool = False) -> dict:
     if usuario["rol"] != "enfermera":
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
     texto = (dpi or "").strip()
@@ -188,7 +283,13 @@ def buscar(usuario: dict, dpi: str) -> dict:
 
         cui = normalizar_cui(texto)
         paciente = almacen.paciente_por_dpi(cui) if len(cui) == 13 else almacen.paciente_por_dpi(texto)
-    return {"pacientes": [paciente] if paciente else []}
+    # Phil: 200 con el paciente si el DPI existe, o lista vacía si no. No es 403 ni 409.
+    if not paciente:
+        return {"pacientes": []}
+    vigente = _emergencia_vigente_de(paciente["id"]) if emergencia else None
+    if vigente:
+        _registrar_lectura_emergencia(usuario, paciente["id"], vigente.get("motivo"))
+    return {"pacientes": [_paciente_de_busqueda(usuario, paciente, emergencia)]}
 
 
 def crear_paciente(usuario: dict, datos: dict) -> dict:
@@ -214,6 +315,7 @@ def crear_paciente(usuario: dict, datos: dict) -> dict:
         telefono=datos.get("telefono"),
         pin=pin,
         debe_cambiar_pin=True,
+        centro_id=usuario.get("centro_id"),
     )
     almacen.anotar_bitacora({"tipo": "alta_paciente", "actor_id": usuario["id"], "paciente_id": paciente["id"]})
     return {"paciente": paciente, "pin_inicial": pin}
@@ -232,6 +334,7 @@ def subir_ficha(usuario: dict, paciente_id: str, client_id: str, capturada_en: s
     if not (client_id or "").strip():
         raise error(400, "validacion", "Falta client_id.")
     _paciente_o_404(paciente_id)
+    exigir_centro_enfermera(usuario, paciente_id)
     previo = almacen.fichas_por_client_id.get(client_id)
     if previo:
         return ficha_publica(almacen.fichas[previo])
@@ -277,6 +380,7 @@ def obtener_ficha(usuario: dict, ficha_id: str) -> dict:
     ficha = almacen.fichas.get(ficha_id)
     if not ficha:
         raise error(404, "no_existe", MENSAJES["no_existe"])
+    exigir_centro_enfermera(usuario, ficha["paciente_id"])
     return ficha_publica(ficha)
 
 
@@ -295,6 +399,7 @@ def confirmar(usuario: dict, ficha_id: str, cuerpo: dict) -> dict:
     ficha = almacen.fichas.get(ficha_id)
     if not ficha:
         raise error(404, "no_existe", MENSAJES["no_existe"])
+    exigir_centro_enfermera(usuario, ficha["paciente_id"])
     if ficha["estado"] == "confirmada":
         raise error(409, "ficha_ya_confirmada", MENSAJES["ficha_ya_confirmada"])
     extraccion = ficha.get("extraccion") or {}
@@ -368,6 +473,10 @@ def corregir_consulta(usuario: dict, consulta_id: str, cuerpo: dict) -> dict:
     actual = almacen.consulta(consulta_id)
     if not actual:
         raise error(404, "no_existe", MENSAJES["no_existe"])
+    pid = almacen.paciente_de_consulta(consulta_id)
+    if not pid:
+        raise error(404, "no_existe", MENSAJES["no_existe"])
+    exigir_centro_enfermera(usuario, pid)
     motivo = (cuerpo.get("motivo_cambio") or "").strip()
     if not motivo:
         raise error(400, "validacion", "Falta el motivo del cambio.")
@@ -403,6 +512,7 @@ def corregir_paciente(usuario: dict, paciente_id: str, cuerpo: dict) -> dict:
     if usuario["rol"] != "enfermera":
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
     actual = _paciente_o_404(paciente_id)
+    exigir_centro_enfermera(usuario, paciente_id)
     if "dpi" in cuerpo:
         raise error(400, "validacion", "El DPI no se corrige desde la app.")
     motivo = (cuerpo.get("motivo_cambio") or "").strip()
@@ -462,7 +572,7 @@ def ver_expediente(usuario: dict, paciente_id: str) -> dict:
         if usuario["paciente_id"] != paciente_id:
             raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
     elif usuario["rol"] == "enfermera":
-        # S-09 pendiente: no hay alcance por centro. P-05 pendiente: no hay cruce por nombre y fecha.
+        exigir_centro_enfermera(usuario, paciente_id)
         momento = tiempo.ahora()
         almacen.registrar_acceso(
             paciente_id=paciente_id,
@@ -471,6 +581,14 @@ def ver_expediente(usuario: dict, paciente_id: str) -> dict:
             motivo=None,
             desde=momento,
             hasta=momento,
+        )
+        almacen.anotar_bitacora(
+            {
+                "tipo": "lectura_expediente",
+                "actor_id": usuario["id"],
+                "paciente_id": paciente_id,
+                "rol": "enfermera",
+            }
         )
     elif usuario["rol"] == "medico":
         acceso = almacen.acceso_vigente(usuario["id"], paciente_id)
@@ -487,13 +605,16 @@ def ver_versiones(usuario: dict, consulta_id: str) -> dict:
         raise error(404, "no_existe", MENSAJES["no_existe"])
     # Antes de armar el historial: el acceso de emergencia no llega al módulo de datos de versiones.
     rechazar_si_emergencia(usuario, pid)
-    if usuario["rol"] == "paciente" and usuario["paciente_id"] != pid:
-        raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
-    if usuario["rol"] == "medico":
+    if usuario["rol"] == "paciente":
+        if usuario["paciente_id"] != pid:
+            raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
+    elif usuario["rol"] == "medico":
         acceso = almacen.acceso_vigente(usuario["id"], pid, ("codigo",))
         if not acceso:
             raise error(403, "acceso_vencido", MENSAJES["acceso_vencido"])
-    elif usuario["rol"] not in {"paciente", "enfermera"}:
+    elif usuario["rol"] == "enfermera":
+        exigir_centro_enfermera(usuario, pid)
+    else:
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
     return {"versiones": almacen.versiones_consulta(consulta_id)}
 
@@ -501,7 +622,19 @@ def ver_versiones(usuario: dict, consulta_id: str) -> dict:
 def exportar_expediente(usuario: dict, paciente_id: str, formato: str) -> tuple[bytes, str, str]:
     _paciente_o_404(paciente_id)
     # Antes del módulo de exportación.
+    # Phil, endpoint 12: solo la paciente descarga. La enfermera no exporta,
+    # ni siquiera el expediente de su centro (S-09 no abre este permiso).
     rechazar_si_emergencia(usuario, paciente_id)
+    if usuario["rol"] == "enfermera":
+        almacen.anotar_bitacora(
+            {
+                "tipo": "acceso_denegado",
+                "actor_id": usuario["id"],
+                "paciente_id": paciente_id,
+                "rol": "enfermera",
+                "via": "exportar",
+            }
+        )
     if usuario["rol"] != "paciente" or usuario["paciente_id"] != paciente_id:
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
     expediente = _armar_expediente(usuario, paciente_id, None)
@@ -518,6 +651,7 @@ def crear_codigo(usuario: dict, paciente_id: str, enviar_sms: bool) -> dict:
     if usuario["rol"] not in {"paciente", "enfermera"}:
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
     _paciente_o_404(paciente_id)
+    exigir_centro_enfermera(usuario, paciente_id)
     codigo = _nuevo_codigo()
     vence = tiempo.ahora() + timedelta(minutes=10)
     meta = almacen.pacientes_meta[paciente_id]
@@ -657,7 +791,7 @@ def _dpi_de_extraccion(extr: dict) -> str | None:
     return None
 
 
-def _vincular_fila(extr: dict, paciente_id_form: str | None) -> tuple[str, str, str]:
+def _vincular_fila(extr: dict, paciente_id_form: str | None, centro_id: str | None) -> tuple[str, str, str]:
     dpi = _dpi_de_extraccion(extr)
     if dpi:
         existente = almacen.paciente_por_dpi(dpi)
@@ -686,6 +820,7 @@ def _vincular_fila(extr: dict, paciente_id_form: str | None) -> tuple[str, str, 
             telefono=None,
             pin=_generar_pin(),
             debe_cambiar_pin=True,
+            centro_id=centro_id,
         )
         return creado["id"], "creado", creado["dpi"]
     if paciente_id_form:
@@ -706,6 +841,7 @@ def _vincular_fila(extr: dict, paciente_id_form: str | None) -> tuple[str, str, 
         telefono=None,
         pin=_generar_pin(),
         debe_cambiar_pin=True,
+        centro_id=centro_id,
     )
     return creado["id"], "creado", creado["dpi"]
 
@@ -715,6 +851,7 @@ def importar_archivo(usuario: dict, nombre: str, contenido: bytes, paciente_id: 
         raise error(403, "rol_no_permitido", MENSAJES["rol_no_permitido"])
     if paciente_id:
         _paciente_o_404(paciente_id)
+        exigir_centro_enfermera(usuario, paciente_id)
     try:
         filas = modulos().importar.leer_archivo(nombre or "archivo", contenido)
     except ErrorModulo as exc:
@@ -738,7 +875,19 @@ def importar_archivo(usuario: dict, nombre: str, contenido: bytes, paciente_id: 
                 }
             )
             continue
-        pid, estado, dpi_resp = _vincular_fila(extr, paciente_id)
+        pid, estado, dpi_resp = _vincular_fila(extr, paciente_id, usuario.get("centro_id"))
+        if not enfermera_alcanza(usuario, pid):
+            con_errores += 1
+            salida.append(
+                {
+                    "fila": fila["fila"],
+                    "dpi": dpi_resp,
+                    "estado": "error",
+                    "expediente_id": None,
+                    "error": "El paciente no es de tu centro.",
+                }
+            )
+            continue
         ahora_iso = tiempo.iso(tiempo.ahora())
         _guardar_ficha(
             {

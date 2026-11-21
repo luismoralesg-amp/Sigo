@@ -1,18 +1,38 @@
 # SIGO — Tu historia te sigue.
 
-Monorepo del hackathon open2 (Legacy). Contrato vigente: `docs/contrato-v3.md` (v3, v1 congelada, rutas por `id`).
+Monorepo del hackathon open2 (Legacy). El frontend usa `docs/contrato-v3.md`. El backend de esta rama implementa el contrato de Phil (`docs/contrato-phil-flujo-y-api.txt`) bajo `/api/v1`. Si una ruta o un campo no coinciden, no se eligió uno en este merge.
 
 - backend/ — Luis (FastAPI, Supabase, permisos, DPI, códigos, CORS, hosting)
 - modulos-arturo/ — Arturo (visión, importar, CAG, exportar). CAG y exportar ya están en esa carpeta; cómo correrlos, en modulos-arturo/README.md
-- contrato/ — `openapi.yaml` (OpenAPI 3.1, 20 endpoints de la v3) y `mocks/` (un JSON por respuesta)
-- frontend/ — Next.js (13 pantallas de la v3). Corre sin backend con mocks: `cd frontend && npm install && npm run dev`. Ver `handoff.md`
-- docs/ — `contrato-v3.md` (vigente), versiones anteriores del contrato y reporte de errores de Arturo
+- contrato/ — el frontend trae `openapi.yaml` (OpenAPI 3.1, 20 endpoints de la v3) y `mocks/`. El backend genera `openapi-v1.json` desde FastAPI (`cd backend && python -m app.exportar_openapi`). Cuál manda si no coinciden queda pendiente; ver `contrato/README.md`.
+- frontend/ — Next.js (13 pantallas de la v3). Corre sin backend con mocks: `cd frontend && npm install && npm run dev`. Ver `frontend/README.md`
+- docs/ — `contrato-v3.md` (lo que usa el frontend), el contrato de Phil y el reporte de errores de Arturo
 
 Interfaces backend ↔ Arturo: modulos-arturo/INTERFACES.md. El backend corre solo con mocks (SIGO_*_IMPL=mock).
 
 ## Backend
 
-API FastAPI en `backend/` (contrato v1 de Phil, bajo `/api/v1`). Pruebas: `cd backend && python -m pytest`.
+API FastAPI en `backend/`. **URL base: `/api/v1`** (local: `http://localhost:8000/api/v1/me`).
+
+Pruebas: `cd backend && python -m pytest`.
+
+OpenAPI v1, generado desde FastAPI (no se edita a mano):
+
+```bash
+cd backend && python -m app.exportar_openapi
+```
+
+Queda en `contrato/openapi-v1.json`. `contrato/openapi.yaml` es el OpenAPI 3.1 que commiteó el frontend para la v3; no es el archivo generado por FastAPI.
+
+### Túnel de Cloudflare (PC de Luis)
+
+El navegador del frontend manda `Origin` desde `http://localhost:3000`, `http://127.0.0.1:3000` o `https://sigo.vercel.app`. Esos orígenes, y en desarrollo `https://*.trycloudflare.com` por regex, ya están permitidos con credenciales. Se cambian con `SIGO_CORS_ORIGINS` y `SIGO_CORS_ORIGIN_REGEX` (vienen en `backend/.env.example`). En producción `SIGO_CORS_ORIGIN_REGEX` va vacío: sin trycloudflare.
+
+```bash
+cd backend && SIGO_CORS_ORIGINS='http://localhost:3000,http://127.0.0.1:3000,https://sigo.vercel.app' SIGO_CORS_ORIGIN_REGEX='^https://[a-zA-Z0-9-]+\.trycloudflare\.com$' SIGO_ENV=desarrollo SIGO_DEV_LOGIN=true uvicorn app.main:app --host 127.0.0.1 --port 8000 & cloudflared tunnel --url http://127.0.0.1:8000
+```
+
+La URL que imprime cloudflared es el origen del API. El backend cuelga de `/api/v1`. El cliente del frontend (`frontend/lib/api/cliente.ts`) arma `BASE = ${NEXT_PUBLIC_API_URL}/api/v1`: si la variable ya trae `/api/v1`, la ruta se duplica. El valor exacto queda pendiente entre front y backend.
 
 Datos de prueba inventados: Rosa Batz Tzoc, DPI `2547896330801`. El contrato v3 pide PIN de 6 dígitos: `482193` (lo usan los mocks y el frontend). **Pendiente del backend:** `backend/app/datos.py` todavía siembra `PIN_ROSA = "4821"` (4 dígitos), así que contra el backend real hoy se entra con `4821`.
 

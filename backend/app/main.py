@@ -19,19 +19,26 @@ def crear_app() -> FastAPI:
         version="1.0.0",
         summary="Tu historia te sigue.",
         description=(
-            "Contrato v1 de Phil: 18 endpoints bajo /api/v1 más POST /importaciones. "
+            "Contrato v1 de Phil. URL base: /api/v1 "
+            "(local: http://localhost:8000/api/v1; el mismo camino detrás del túnel). "
+            "18 endpoints más POST /importaciones. "
             "Nada se borra. La IA no guarda sola. "
+            "OpenAPI generado: contrato/openapi-v1.json. "
             "formato_no_soportado es un 400 propio (no se reescribe como validacion)."
         ),
+        servers=[{"url": "/", "description": "Este proceso. Todas las rutas cuelgan de /api/v1."}],
     )
     cfg = config()
+    # Credenciales: el origen permitido se refleja tal cual (nunca "*") para que
+    # el navegador acepte Authorization en el preflight.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cfg.cors_origins,
-        allow_origin_regex=cfg.sigo_cors_origin_regex,
+        allow_origin_regex=cfg.sigo_cors_origin_regex or None,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Content-Disposition"],
     )
 
     @app.exception_handler(ErrorSigo)

@@ -5,8 +5,14 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# Túnel rápido de Cloudflare: https://<subdominio>.trycloudflare.com
+# Anclado para que no matchee un sufijo colado (fullmatch de Starlette).
+REGEX_TUNEL = r"^https://[a-zA-Z0-9-]+\.trycloudflare\.com$"
+ORIGENES_CORS = "http://localhost:3000,http://127.0.0.1:3000,https://sigo.vercel.app"
 
 
 class Config(BaseSettings):
@@ -14,9 +20,11 @@ class Config(BaseSettings):
 
     # --- API ---
     sigo_env: Literal["desarrollo", "demo", "produccion"] = "desarrollo"
-    sigo_cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
-    # Regex opcional para previews de Vercel y túneles, p. ej. https://.*\.trycloudflare\.com
-    sigo_cors_origin_regex: str | None = None
+    # Lista separada por comas. El frontend (Next.js) sale de localhost:3000 o de Vercel.
+    sigo_cors_origins: str = ORIGENES_CORS
+    # Desarrollo: regex del túnel. En producción la variable va vacía (sin trycloudflare).
+    # Si no está definida, queda el default del túnel. Cadena vacía lo apaga.
+    sigo_cors_origin_regex: str = REGEX_TUNEL
     sigo_public_api_url: str = "http://localhost:8000"
     sigo_public_app_url: str = "https://sigo.app"
     # Secreto para firmar URLs de imágenes. Cambialo fuera de desarrollo.
@@ -48,6 +56,14 @@ class Config(BaseSettings):
     ollama_host: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen2.5:7b"
     vision_mode: Literal["local", "cloud"] = "local"
+
+    @field_validator("sigo_cors_origin_regex", mode="before")
+    @classmethod
+    def _regex_vacio(cls, value: object) -> object:
+        # Producción manda la variable vacía: no reponer el túnel.
+        if isinstance(value, str) and not value.strip():
+            return ""
+        return value
 
     @property
     def cors_origins(self) -> list[str]:
