@@ -221,9 +221,14 @@ def autenticar_paciente(dpi: str, pin: str) -> dict:
     return {"token": token, "vence_en": tiempo.iso(vence), "paciente_id": paciente["id"]}
 
 
-def _paciente_de_busqueda(paciente: dict, emergencia: bool) -> dict:
-    """Misma forma de Paciente. Fuera de emergencia las alertas van vacías."""
-    if emergencia:
+def _paciente_de_busqueda(usuario: dict, paciente: dict, emergencia: bool) -> dict:
+    """Misma forma de Paciente.
+
+    Con S-09 (su centro, una consulta ahí, o editada_por) o en emergencia,
+    las alertas van completas. Si el registro existe y no es de su centro,
+    alergias y condiciones_cronicas van vacías.
+    """
+    if emergencia or enfermera_alcanza(usuario, paciente["id"]):
         return paciente
     visible = dict(paciente)
     visible["alergias"] = []
@@ -247,7 +252,7 @@ def buscar(usuario: dict, dpi: str, emergencia: bool = False) -> dict:
     # Phil: 200 con el paciente si el DPI existe, o lista vacía si no. No es 403 ni 409.
     if not paciente:
         return {"pacientes": []}
-    return {"pacientes": [_paciente_de_busqueda(paciente, emergencia)]}
+    return {"pacientes": [_paciente_de_busqueda(usuario, paciente, emergencia)]}
 
 
 def crear_paciente(usuario: dict, datos: dict) -> dict:

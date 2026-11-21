@@ -177,37 +177,86 @@ CAMPOS_PACIENTE = {
 }
 
 
-def test_buscar_mismo_centro_sin_emergencia_oculta_alertas(cliente):
-    ana = token_rol("enfermera")
-    almacen.pacientes["p_12"][-1]["condiciones_cronicas"] = ["hipertension"]
-    r = cliente.get("/api/v1/pacientes/buscar", headers=auth(ana), params={"dpi": DPI_ROSA})
-    assert r.status_code == 200, r.text
-    assert set(r.json()) == {"pacientes"}
-    paciente = r.json()["pacientes"][0]
+def _alertas(pid: str, alergias: list[str], cronicas: list[str]) -> None:
+    vigente = almacen.pacientes[pid][-1]
+    vigente["alergias"] = list(alergias)
+    vigente["condiciones_cronicas"] = list(cronicas)
+
+
+def _forma(cuerpo: dict, pid: str) -> dict:
+    assert set(cuerpo) == {"pacientes"}
+    assert len(cuerpo["pacientes"]) == 1
+    paciente = cuerpo["pacientes"][0]
     assert set(paciente) == CAMPOS_PACIENTE
-    assert paciente["id"] == "p_12"
-    assert paciente["nombre"] == "Rosa Batz Tzoc"
-    assert paciente["alergias"] == []
-    assert paciente["condiciones_cronicas"] == []
+    assert paciente["id"] == pid
+    return paciente
+
+
+def test_buscar_de_su_centro_devuelve_alertas_completas(cliente):
+    ana = token_rol("enfermera")
+    _alertas("p_12", ["penicilina"], ["hipertension"])
+    propia = cliente.get("/api/v1/pacientes/buscar", headers=auth(ana), params={"dpi": DPI_ROSA})
+    assert propia.status_code == 200, propia.text
+    rosa = _forma(propia.json(), "p_12")
+    assert rosa["alergias"] == ["penicilina"]
+    assert rosa["condiciones_cronicas"] == ["hipertension"]
     expediente = cliente.get("/api/v1/pacientes/p_12/expediente", headers=auth(ana))
-    assert expediente.status_code == 200, expediente.text
+    assert expediente.status_code == 200
     assert expediente.json()["paciente"]["alergias"] == ["penicilina"]
-    assert expediente.json()["paciente"]["condiciones_cronicas"] == ["hipertension"]
     assert expediente.json()["alertas"]["alergias"] == ["penicilina"]
 
+    _paciente("p_consulta", "TMP-20050312-CN01", "Consulta Aj", "c_02")
+    _alertas("p_consulta", ["yodo"], ["asma"])
+    _consulta("p_consulta", "c_01", "Alguien del puesto")
+    por_consulta = cliente.get(
+        "/api/v1/pacientes/buscar", headers=auth(ana), params={"dpi": "TMP-20050312-CN01"}
+    )
+    assert por_consulta.status_code == 200, por_consulta.text
+    vista = _forma(por_consulta.json(), "p_consulta")
+    assert vista["alergias"] == ["yodo"]
+    assert vista["condiciones_cronicas"] == ["asma"]
 
-def test_buscar_mismo_centro_en_emergencia_muestra_alertas(cliente):
+    _paciente("p_editada", "TMP-20050312-ED01", "Editada Aj", "c_02")
+    _alertas("p_editada", ["sulfa"], ["diabetes"])
+    _consulta("p_editada", "c_02", "Ana Tzul")
+    por_ella = cliente.get(
+        "/api/v1/pacientes/buscar", headers=auth(ana), params={"dpi": "TMP-20050312-ED01"}
+    )
+    assert por_ella.status_code == 200, por_ella.text
+    atendida = _forma(por_ella.json(), "p_editada")
+    assert atendida["alergias"] == ["sulfa"]
+    assert atendida["condiciones_cronicas"] == ["diabetes"]
+
+
+def test_buscar_fuera_de_centro_oculta_alertas_sin_403(cliente):
     ana = token_rol("enfermera")
-    almacen.pacientes["p_12"][-1]["condiciones_cronicas"] = ["hipertension"]
+    _paciente("p_lejos", "TMP-20050312-LJ01", "Inés Aj", "c_02")
+    _alertas("p_lejos", ["yodo"], ["asma"])
+    _consulta("p_lejos", "c_02", "Elena Choc")
+    r = cliente.get("/api/v1/pacientes/buscar", headers=auth(ana), params={"dpi": "TMP-20050312-LJ01"})
+    assert r.status_code == 200, r.text
+    paciente = _forma(r.json(), "p_lejos")
+    assert paciente["nombre"] == "Inés Aj"
+    assert paciente["alergias"] == []
+    assert paciente["condiciones_cronicas"] == []
+    assert_error(
+        cliente.get("/api/v1/pacientes/p_lejos/expediente", headers=auth(ana)),
+        403,
+        "rol_no_permitido",
+    )
+
+
+def test_buscar_emergencia_muestra_alertas_de_otro_centro(cliente):
+    ana = token_rol("enfermera")
+    _paciente("p_lejos", "TMP-20050312-LJ02", "Inés Aj", "c_02")
+    _alertas("p_lejos", ["yodo"], ["asma"])
+    _consulta("p_lejos", "c_02", "Elena Choc")
     r = cliente.get(
         "/api/v1/pacientes/buscar",
         headers=auth(ana),
-        params={"dpi": DPI_ROSA, "emergencia": "true"},
+        params={"dpi": "TMP-20050312-LJ02", "emergencia": "true"},
     )
     assert r.status_code == 200, r.text
-    assert set(r.json()) == {"pacientes"}
-    paciente = r.json()["pacientes"][0]
-    assert set(paciente) == CAMPOS_PACIENTE
-    assert paciente["id"] == "p_12"
-    assert paciente["alergias"] == ["penicilina"]
-    assert paciente["condiciones_cronicas"] == ["hipertension"]
+    paciente = _forma(r.json(), "p_lejos")
+    assert paciente["alergias"] == ["yodo"]
+    assert paciente["condiciones_cronicas"] == ["asma"]
