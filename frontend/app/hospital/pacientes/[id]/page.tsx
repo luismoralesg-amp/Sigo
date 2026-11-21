@@ -90,7 +90,7 @@ function Expedientes({ e }: { e: Expediente }) {
                 Historial de consultas
               </h2>
               {e.consultas.length ? (
-                <LineaTiempo consultas={e.consultas} />
+                <LineaTiempo consultas={e.consultas} corregible={false} />
               ) : (
                 <p className="tarjeta p-4 text-tinta-suave">Este expediente todavía no tiene consultas.</p>
               )}

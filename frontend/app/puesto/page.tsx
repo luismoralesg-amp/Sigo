@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Baby, ChevronRight, FileSpreadsheet, LoaderCircle, Search, TriangleAlert, UserPlus } from "lucide-react";
 import type { Ficha } from "@/lib/types";
+import { contarConfianzaBaja } from "@/lib/ficha-revision";
 import { Shell } from "@/components/shell";
 import { Boton, BarraAccion } from "@/components/ui/button";
 import { Entrada, Etiqueta } from "@/components/ui/input";
@@ -149,6 +150,7 @@ function FilaFicha({ f }: { f: Ficha }) {
   const p = f.extraccion?.paciente;
   const nombre = p?.nombre.valor ?? "Sin nombre leído";
   const edad = edadTexto(p?.fecha_nacimiento.valor);
+  const bajas = contarConfianzaBaja(f.extraccion);
   return (
     <li>
       <Link href={`/puesto/fichas/${encodeURIComponent(f.id)}`} className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-papel">
@@ -156,7 +158,9 @@ function FilaFicha({ f }: { f: Ficha }) {
           <span className="block truncate font-semibold">{nombre}</span>
           <span className="cifra block text-[0.95rem] text-tinta-suave">{[p?.dpi.valor ? dpiParcial(p.dpi.valor) : null, edad].filter(Boolean).join(", ") || "Sin DPI"}</span>
         </span>
-        <span className="etiqueta-dudoso shrink-0">{f.origen === "foto" ? "Foto" : "Archivo"} por revisar</span>
+        <span className="etiqueta-dudoso shrink-0 text-right">
+          {bajas > 0 ? `${bajas} con confianza baja` : f.origen === "foto" ? "Foto por revisar" : "Archivo por revisar"}
+        </span>
         <ChevronRight className="h-5 w-5 shrink-0 text-tinta-suave" aria-hidden="true" />
       </Link>
     </li>
